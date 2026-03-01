@@ -42,8 +42,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install cargo-dist
-        uses: taiki-e/install-action@cargo-dist
+        run: cargo install cargo-dist
 
       - name: Plan release
         id: plan
@@ -126,8 +129,11 @@ jobs:
         with:
           targets: ${{ matrix.install_target && matrix.target || '' }}
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install cargo-dist
-        uses: taiki-e/install-action@cargo-dist
+        run: cargo install cargo-dist
 
       # Install cross-compilation tools for Linux ARM
       - name: Install cross-compilation tools
