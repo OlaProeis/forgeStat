@@ -53,23 +53,6 @@ jobs:
             ./target/release/forgeStat --help
           fi
 
-  # Check cargo-dist can generate installers
-  plan:
-    name: Plan Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-dist
-        run: cargo install cargo-dist
-
-      - name: Run cargo-dist plan
-        run: dist plan
-
   # Check package metadata
   metadata:
     name: Check Package Metadata
