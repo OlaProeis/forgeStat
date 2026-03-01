@@ -54,24 +54,25 @@ jobs:
         run: |
           # Use the provided tag for workflow_dispatch, or github.ref for push
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            REF="refs/tags/${{ github.event.inputs.tag }}"
+            TAG="${{ github.event.inputs.tag }}"
           else
-            REF="${{ github.ref }}"
+            TAG="${{ github.ref_name }}"
           fi
 
-          dist host --steps=upload --steps=release --output-format=json "$REF" > dist-manifest.json || true
+          # Try cargo-dist plan (newer API) - doesn't take ref argument anymore
+          dist plan --output-format=json > dist-manifest.json 2>/dev/null || true
 
-          # If cargo-dist plan fails, we'll still proceed with manual build
-          if [ -f dist-manifest.json ]; then
+          # If cargo-dist plan fails or produces empty output, fallback to manual values
+          if [ -f dist-manifest.json ] && [ -s dist-manifest.json ] && jq -e '.releases' dist-manifest.json >/dev/null 2>&1; then
             echo "dist-manifest.json:"
             cat dist-manifest.json
             DIST_TAG=$(jq -r '.announcement_tag // empty' dist-manifest.json)
             DIST_VERSION=$(jq -r '.announcement_title // empty' dist-manifest.json)
             HAS_RELEASES=$(jq '.releases | length' dist-manifest.json 2>/dev/null || echo "0")
           else
-            # Extract tag from REF
-            DIST_TAG="${REF#refs/tags/}"
-            DIST_VERSION="${DIST_TAG}"
+            # Fallback: use tag directly
+            DIST_TAG="$TAG"
+            DIST_VERSION="$TAG"
             HAS_RELEASES="1"
           fi
 
