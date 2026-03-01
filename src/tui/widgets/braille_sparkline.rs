@@ -1,9 +1,4 @@
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Style,
-    widgets::Widget,
-};
+use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 
 /// A sparkline widget that uses Unicode Braille patterns for 2x vertical resolution.
 ///
@@ -75,11 +70,11 @@ impl<'a> BrailleSparkline<'a> {
     /// Get the left column pattern (dots 1, 2, 3, 7) for a given level (0-4)
     fn left_pattern(level: u8) -> u8 {
         match level {
-            0 => 0,       // Empty
-            1 => 0x04,    // Dot 3 only (bottom)
-            2 => 0x06,    // Dots 2, 3 (lower half)
-            3 => 0x07,    // Dots 1, 2, 3 (upper half)
-            4 => 0x47,    // Dots 1, 2, 3, 7 (full)
+            0 => 0,    // Empty
+            1 => 0x04, // Dot 3 only (bottom)
+            2 => 0x06, // Dots 2, 3 (lower half)
+            3 => 0x07, // Dots 1, 2, 3 (upper half)
+            4 => 0x47, // Dots 1, 2, 3, 7 (full)
             _ => 0,
         }
     }
@@ -87,11 +82,11 @@ impl<'a> BrailleSparkline<'a> {
     /// Get the right column pattern (dots 4, 5, 6, 8) for a given level (0-4)
     fn right_pattern(level: u8) -> u8 {
         match level {
-            0 => 0,       // Empty
-            1 => 0x20,    // Dot 6 only (bottom)
-            2 => 0x30,    // Dots 5, 6 (lower half)
-            3 => 0x38,    // Dots 4, 5, 6 (upper half)
-            4 => 0xB8,    // Dots 4, 5, 6, 8 (full)
+            0 => 0,    // Empty
+            1 => 0x20, // Dot 6 only (bottom)
+            2 => 0x30, // Dots 5, 6 (lower half)
+            3 => 0x38, // Dots 4, 5, 6 (upper half)
+            4 => 0xB8, // Dots 4, 5, 6, 8 (full)
             _ => 0,
         }
     }
@@ -271,7 +266,11 @@ mod tests {
         for pattern in [0u8, 0x04, 0x06, 0x07, 0x47, 0x20, 0x30, 0x38, 0xB8] {
             let char_code = 0x2800 + pattern as u32;
             let ch = char::from_u32(char_code);
-            assert!(ch.is_some(), "Failed to create Braille char for pattern {}", pattern);
+            assert!(
+                ch.is_some(),
+                "Failed to create Braille char for pattern {}",
+                pattern
+            );
         }
     }
 }

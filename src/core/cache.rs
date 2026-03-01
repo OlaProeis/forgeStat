@@ -114,7 +114,10 @@ impl Cache {
             log::info!("Initialized state.json at {}", self.state_path.display());
         }
 
-        log::info!("Cache directory initialized at {}", self.base_path.display());
+        log::info!(
+            "Cache directory initialized at {}",
+            self.base_path.display()
+        );
         Ok(())
     }
 
@@ -132,8 +135,8 @@ impl Cache {
             return Ok(StateEntry::default());
         }
 
-        let state: StateEntry = serde_json::from_str(&content)
-            .context("Failed to deserialize state entry")?;
+        let state: StateEntry =
+            serde_json::from_str(&content).context("Failed to deserialize state entry")?;
 
         Ok(state)
     }
@@ -147,8 +150,8 @@ impl Cache {
                 .context("Failed to create state directory")?;
         }
 
-        let json = serde_json::to_string_pretty(state)
-            .context("Failed to serialize state entry")?;
+        let json =
+            serde_json::to_string_pretty(state).context("Failed to serialize state entry")?;
 
         fs::write(&self.state_path, json)
             .await
@@ -204,8 +207,8 @@ impl Cache {
             snapshot: snapshot.clone(),
         };
 
-        let json = serde_json::to_string_pretty(&entry)
-            .context("Failed to serialize cache entry")?;
+        let json =
+            serde_json::to_string_pretty(&entry).context("Failed to serialize cache entry")?;
 
         fs::write(&self.cache_path, json)
             .await
@@ -303,7 +306,11 @@ impl Cache {
         }
 
         if deleted_count > 0 {
-            log::info!("Purged {} history files older than {} days", deleted_count, days);
+            log::info!(
+                "Purged {} history files older than {} days",
+                deleted_count,
+                days
+            );
         }
 
         Ok(deleted_count)
@@ -331,7 +338,11 @@ impl Cache {
                         log::info!("Removed oldest history file: {}", oldest_path.display());
                     }
                     Err(e) => {
-                        log::error!("Failed to remove old history file {}: {}", oldest_path.display(), e);
+                        log::error!(
+                            "Failed to remove old history file {}: {}",
+                            oldest_path.display(),
+                            e
+                        );
                         break;
                     }
                 }
@@ -537,7 +548,8 @@ impl Cache {
                         if let Ok(entry) = serde_json::from_str::<CacheEntry>(&content) {
                             (
                                 entry.snapshot.repo.description.clone(),
-                                Self::load_state_from_path(&repo_path.join("state.json")).await
+                                Self::load_state_from_path(&repo_path.join("state.json"))
+                                    .await
                                     .ok()
                                     .and_then(|s| s.last_viewed_at),
                             )
@@ -586,8 +598,8 @@ impl Cache {
             return Ok(StateEntry::default());
         }
 
-        let state: StateEntry = serde_json::from_str(&content)
-            .context("Failed to deserialize state entry")?;
+        let state: StateEntry =
+            serde_json::from_str(&content).context("Failed to deserialize state entry")?;
 
         Ok(state)
     }
@@ -597,8 +609,8 @@ impl Cache {
 mod tests {
     use super::*;
     use crate::core::models::{
-        Contributor, ContributorStats, Issue, IssueStats, PrStats, Release, RepoMeta,
-        RepoSnapshot, StarHistory, VelocityStats, WeeklyActivity,
+        Contributor, ContributorStats, Issue, IssueStats, PrStats, Release, RepoMeta, RepoSnapshot,
+        StarHistory, VelocityStats, WeeklyActivity,
     };
     use std::collections::HashMap;
     use tempfile::TempDir;
@@ -708,9 +720,24 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let cache = Cache {
             base_path: temp_dir.path().join("repowatch").join("owner").join("repo"),
-            cache_path: temp_dir.path().join("repowatch").join("owner").join("repo").join("cache.json"),
-            history_path: temp_dir.path().join("repowatch").join("owner").join("repo").join("history"),
-            state_path: temp_dir.path().join("repowatch").join("owner").join("repo").join("state.json"),
+            cache_path: temp_dir
+                .path()
+                .join("repowatch")
+                .join("owner")
+                .join("repo")
+                .join("cache.json"),
+            history_path: temp_dir
+                .path()
+                .join("repowatch")
+                .join("owner")
+                .join("repo")
+                .join("history"),
+            state_path: temp_dir
+                .path()
+                .join("repowatch")
+                .join("owner")
+                .join("repo")
+                .join("state.json"),
         };
 
         // Initialize should create directories and state.json
@@ -755,8 +782,14 @@ mod tests {
 
         assert_eq!(loaded.snapshot.repo.owner, snapshot.repo.owner);
         assert_eq!(loaded.snapshot.repo.name, snapshot.repo.name);
-        assert_eq!(loaded.snapshot.stars.total_count, snapshot.stars.total_count);
-        assert_eq!(loaded.snapshot.issues.total_open, snapshot.issues.total_open);
+        assert_eq!(
+            loaded.snapshot.stars.total_count,
+            snapshot.stars.total_count
+        );
+        assert_eq!(
+            loaded.snapshot.issues.total_open,
+            snapshot.issues.total_open
+        );
     }
 
     #[tokio::test]
@@ -866,9 +899,17 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let cache = Cache {
             base_path: temp_dir.path().join("deep").join("nested"),
-            cache_path: temp_dir.path().join("deep").join("nested").join("cache.json"),
+            cache_path: temp_dir
+                .path()
+                .join("deep")
+                .join("nested")
+                .join("cache.json"),
             history_path: temp_dir.path().join("deep").join("nested").join("history"),
-            state_path: temp_dir.path().join("deep").join("nested").join("state.json"),
+            state_path: temp_dir
+                .path()
+                .join("deep")
+                .join("nested")
+                .join("state.json"),
         };
 
         let snapshot = create_test_snapshot();
@@ -960,7 +1001,9 @@ mod tests {
 
         // Verify file was created with correct name
         assert!(history_path.exists());
-        assert!(history_path.to_string_lossy().contains(&snapshot.snapshot_history_id.to_string()));
+        assert!(history_path
+            .to_string_lossy()
+            .contains(&snapshot.snapshot_history_id.to_string()));
 
         // Verify history count
         let count = cache.history_count().await.unwrap();
@@ -993,7 +1036,10 @@ mod tests {
 
         // Verify only 20 remain (rotation should have deleted the oldest 5)
         let count = cache.history_count().await.unwrap();
-        assert_eq!(count, 20, "Should have exactly 20 history snapshots after rotation (added 25, max is 20)");
+        assert_eq!(
+            count, 20,
+            "Should have exactly 20 history snapshots after rotation (added 25, max is 20)"
+        );
 
         // Verify we can still add more snapshots and maintain the limit
         for i in 0..5 {
@@ -1007,6 +1053,9 @@ mod tests {
 
         // Should still be 20
         let final_count = cache.history_count().await.unwrap();
-        assert_eq!(final_count, 20, "Should still have exactly 20 history snapshots after adding 5 more");
+        assert_eq!(
+            final_count, 20,
+            "Should still have exactly 20 history snapshots after adding 5 more"
+        );
     }
 }

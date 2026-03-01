@@ -86,10 +86,10 @@ impl CommunityMetrics {
             owner, repo
         );
 
-        let mut req = self
-            .http
-            .get(&url)
-            .header("Accept", "application/vnd.github.black-panther-preview+json");
+        let mut req = self.http.get(&url).header(
+            "Accept",
+            "application/vnd.github.black-panther-preview+json",
+        );
 
         if let Some(ref token) = self.token {
             req = req.header("Authorization", format!("Bearer {}", token));

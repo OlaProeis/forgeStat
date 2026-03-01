@@ -49,7 +49,12 @@ impl<'a> IssuesMetrics<'a> {
                 .page(page)
                 .send()
                 .await
-                .with_context(|| format!("Failed to fetch issues page {} for {}/{}", page, owner, repo))?;
+                .with_context(|| {
+                    format!(
+                        "Failed to fetch issues page {} for {}/{}",
+                        page, owner, repo
+                    )
+                })?;
 
             let issues: Vec<_> = issues_page.items;
             let fetched = issues.len();
@@ -89,11 +94,7 @@ impl<'a> IssuesMetrics<'a> {
                 author: issue.user.login.clone(),
                 created_at,
                 updated_at,
-                labels: issue
-                    .labels
-                    .iter()
-                    .map(|l| l.name.clone())
-                    .collect(),
+                labels: issue.labels.iter().map(|l| l.name.clone()).collect(),
                 comments_count: issue.comments as u64,
             };
 
@@ -152,7 +153,12 @@ mod tests {
         }
     }
 
-    fn create_test_issue_with_labels(number: u64, title: &str, age_days: i64, labels: Vec<&str>) -> Issue {
+    fn create_test_issue_with_labels(
+        number: u64,
+        title: &str,
+        age_days: i64,
+        labels: Vec<&str>,
+    ) -> Issue {
         let created_at = Utc::now() - Duration::days(age_days);
         Issue {
             number,

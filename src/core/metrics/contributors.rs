@@ -58,9 +58,7 @@ impl<'a> ContributorsMetrics<'a> {
 
         // Identify new contributors by analyzing recent commits
         // Limit to top 10 to avoid excessive API calls on large repos
-        let new_contributors_last_30d = self
-            .identify_new_contributors(owner, repo, 10)
-            .await?;
+        let new_contributors_last_30d = self.identify_new_contributors(owner, repo, 10).await?;
 
         Ok(ContributorStats {
             top_contributors,

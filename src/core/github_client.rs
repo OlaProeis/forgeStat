@@ -103,7 +103,10 @@ impl GitHubClient {
             .with_context(|| format!("Failed to fetch repo metadata for {}/{}", owner, repo))?;
 
         // Convert language from Option<Value> to Option<String>
-        let language = repo_data.language.as_ref().and_then(|v| v.as_str().map(|s| s.to_string()));
+        let language = repo_data
+            .language
+            .as_ref()
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
 
         Ok(RepoMeta {
             owner: owner.to_string(),
@@ -112,7 +115,9 @@ impl GitHubClient {
             language,
             created_at: repo_data.created_at.unwrap_or_else(Utc::now),
             updated_at: repo_data.updated_at.unwrap_or_else(Utc::now),
-            default_branch: repo_data.default_branch.unwrap_or_else(|| "main".to_string()),
+            default_branch: repo_data
+                .default_branch
+                .unwrap_or_else(|| "main".to_string()),
             forks_count: repo_data.forks_count.unwrap_or(0) as u64,
             open_issues_count: repo_data.open_issues_count.unwrap_or(0) as u64,
             watchers_count: repo_data.watchers_count.unwrap_or(0) as u64,
@@ -147,18 +152,28 @@ impl GitHubClient {
 
         let total_count = repo_data.stargazers_count.unwrap_or(0) as u64;
         let now = Utc::now();
-        let repo_created_at = repo_data.created_at.unwrap_or_else(|| now - Duration::days(365));
+        let repo_created_at = repo_data
+            .created_at
+            .unwrap_or_else(|| now - Duration::days(365));
         let repo_age_days = (now - repo_created_at).num_days();
 
         // For repos older than 1 year, fetch more history to show meaningful 1-year sparkline
         // Cap at 365 days even for old repos to avoid excessive API calls
-        let cutoff_days = if repo_age_days > 365 { 365 } else { repo_age_days.max(30) };
-        
+        let cutoff_days = if repo_age_days > 365 {
+            365
+        } else {
+            repo_age_days.max(30)
+        };
+
         log::info!(
             "Fetching stargazers for {}/{}: total_count={}, repo_age_days={}, cutoff_days={}",
-            owner, repo, total_count, repo_age_days, cutoff_days
+            owner,
+            repo,
+            total_count,
+            repo_age_days,
+            cutoff_days
         );
-        
+
         // Use Arc to share the callback between potential GraphQL and REST paths
         let timestamps = if total_count == 0 {
             Vec::new()
@@ -170,14 +185,22 @@ impl GitHubClient {
             // Try GraphQL first for large repos
             if self.token.is_some() && calculated_last_page > 400 {
                 match self
-                    .fetch_stargazer_timestamps_graphql_with_progress(owner, repo, cutoff_days, estimated_pages, progress_cb)
+                    .fetch_stargazer_timestamps_graphql_with_progress(
+                        owner,
+                        repo,
+                        cutoff_days,
+                        estimated_pages,
+                        progress_cb,
+                    )
                     .await
                 {
                     Ok(ts) => ts,
                     Err(e) => {
                         log::warn!(
                             "GraphQL stargazer fetch failed for {}/{}, falling back to REST: {}",
-                            owner, repo, e
+                            owner,
+                            repo,
+                            e
                         );
                         // Fall back to REST (without progress callback since it was consumed)
                         self.fetch_stargazer_timestamps_rest(owner, repo, total_count, cutoff_days)
@@ -186,14 +209,24 @@ impl GitHubClient {
                 }
             } else {
                 // Use REST directly with progress
-                self.fetch_stargazer_timestamps_rest_with_progress(owner, repo, total_count, cutoff_days, estimated_pages, progress_cb)
-                    .await?
+                self.fetch_stargazer_timestamps_rest_with_progress(
+                    owner,
+                    repo,
+                    total_count,
+                    cutoff_days,
+                    estimated_pages,
+                    progress_cb,
+                )
+                .await?
             }
         };
-        
+
         log::info!(
             "Fetched {} stargazer timestamps for {}/{} (covering {} days)",
-            timestamps.len(), owner, repo, cutoff_days
+            timestamps.len(),
+            owner,
+            repo,
+            cutoff_days
         );
 
         // Timestamps are already sorted chronologically by fetch_stargazer_timestamps
@@ -204,22 +237,29 @@ impl GitHubClient {
         // to maintain good visual density like the 90-day view.
         // Start from repo creation date so the chart shows the full ramp from 0 stars.
         // For older repos, always show full 365 days with 12 monthly buckets.
-        let (sparkline_365d_start, sparkline_365d_buckets) = if repo_age_days < 365 && !timestamps.is_empty() {
-            let active_period_days = (now - repo_created_at).num_days().max(1);
-            let weeks = (active_period_days / 7).max(1).min(52) as usize;
-            (repo_created_at, weeks)
-        } else {
-            (now - Duration::days(365), 12)
-        };
-        let sparkline_365d = stars::generate_sparkline(&timestamps, sparkline_365d_start, sparkline_365d_buckets);
+        let (sparkline_365d_start, sparkline_365d_buckets) =
+            if repo_age_days < 365 && !timestamps.is_empty() {
+                let active_period_days = (now - repo_created_at).num_days().max(1);
+                let weeks = (active_period_days / 7).max(1).min(52) as usize;
+                (repo_created_at, weeks)
+            } else {
+                (now - Duration::days(365), 12)
+            };
+        let sparkline_365d =
+            stars::generate_sparkline(&timestamps, sparkline_365d_start, sparkline_365d_buckets);
 
         let total_30d: u32 = sparkline_30d.iter().sum();
         let total_90d: u32 = sparkline_90d.iter().sum();
         let total_365d: u32 = sparkline_365d.iter().sum();
-        
+
         log::info!(
             "StarHistory for {}/{}: timestamps={}, 30d_sum={}, 90d_sum={}, 365d_sum={}",
-            owner, repo, timestamps.len(), total_30d, total_90d, total_365d
+            owner,
+            repo,
+            timestamps.len(),
+            total_30d,
+            total_90d,
+            total_365d
         );
 
         Ok(StarHistory {
@@ -262,7 +302,9 @@ impl GitHubClient {
                 Err(e) => {
                     log::warn!(
                         "GraphQL stargazer fetch failed for {}/{}, falling back to REST: {}",
-                        owner, repo, e
+                        owner,
+                        repo,
+                        e
                     );
                 }
             }
@@ -295,7 +337,9 @@ impl GitHubClient {
 
         log::info!(
             "Fetching stargazers via GraphQL for {}/{} (cutoff: {} days)",
-            owner, repo, cutoff_days
+            owner,
+            repo,
+            cutoff_days
         );
 
         static QUERY: &str = r#"query($owner: String!, $name: String!, $cursor: String) {
@@ -338,7 +382,10 @@ impl GitHubClient {
                 let text = resp.text().await.unwrap_or_default();
                 anyhow::bail!(
                     "GraphQL returned {} for {}/{}: {}",
-                    status, owner, repo, text
+                    status,
+                    owner,
+                    repo,
+                    text
                 );
             }
 
@@ -420,7 +467,10 @@ impl GitHubClient {
 
         log::info!(
             "Fetching stargazers via GraphQL for {}/{} (cutoff: {} days, est. {} pages)",
-            owner, repo, cutoff_days, estimated_pages
+            owner,
+            repo,
+            cutoff_days,
+            estimated_pages
         );
 
         static QUERY: &str = r#"query($owner: String!, $name: String!, $cursor: String) {
@@ -468,7 +518,10 @@ impl GitHubClient {
                 let text = resp.text().await.unwrap_or_default();
                 anyhow::bail!(
                     "GraphQL returned {} for {}/{}: {}",
-                    status, owner, repo, text
+                    status,
+                    owner,
+                    repo,
+                    text
                 );
             }
 
@@ -548,9 +601,7 @@ impl GitHubClient {
             .discover_stargazer_last_page(owner, repo, calculated_last_page)
             .await;
 
-        let start_page = last_page
-            .saturating_sub(STARGAZERS_MAX_PAGES - 1)
-            .max(1);
+        let start_page = last_page.saturating_sub(STARGAZERS_MAX_PAGES - 1).max(1);
 
         let mut all_timestamps = Vec::new();
         let mut pages_fetched = 0;
@@ -596,7 +647,11 @@ impl GitHubClient {
                 let body = response.text().await.unwrap_or_default();
                 log::warn!(
                     "Stargazer API returned {} for {}/{} page {}: body={}",
-                    status, owner, repo, page, body
+                    status,
+                    owner,
+                    repo,
+                    page,
+                    body
                 );
                 break;
             }
@@ -624,7 +679,9 @@ impl GitHubClient {
 
         log::info!(
             "REST stargazer fetch complete: {} timestamps from {} pages (cutoff: {} days)",
-            all_timestamps.len(), pages_fetched, cutoff_days
+            all_timestamps.len(),
+            pages_fetched,
+            cutoff_days
         );
 
         Ok(all_timestamps)
@@ -648,9 +705,7 @@ impl GitHubClient {
             .discover_stargazer_last_page(owner, repo, calculated_last_page)
             .await;
 
-        let start_page = last_page
-            .saturating_sub(STARGAZERS_MAX_PAGES - 1)
-            .max(1);
+        let start_page = last_page.saturating_sub(STARGAZERS_MAX_PAGES - 1).max(1);
 
         let total_pages_to_fetch = last_page - start_page + 1;
         let display_total = estimated_pages.max(total_pages_to_fetch);
@@ -705,7 +760,11 @@ impl GitHubClient {
                 let body = response.text().await.unwrap_or_default();
                 log::warn!(
                     "Stargazer API returned {} for {}/{} page {}: body={}",
-                    status, owner, repo, page, body
+                    status,
+                    owner,
+                    repo,
+                    page,
+                    body
                 );
                 break;
             }
@@ -733,7 +792,9 @@ impl GitHubClient {
 
         log::info!(
             "REST stargazer fetch complete: {} timestamps from {} pages (cutoff: {} days)",
-            all_timestamps.len(), pages_fetched, cutoff_days
+            all_timestamps.len(),
+            pages_fetched,
+            cutoff_days
         );
 
         Ok(all_timestamps)
@@ -776,7 +837,8 @@ impl GitHubClient {
                         if page < calculated_last_page {
                             log::info!(
                                 "GitHub API caps stargazer pagination at page {} (calculated {})",
-                                page, calculated_last_page
+                                page,
+                                calculated_last_page
                             );
                         }
                         page
@@ -788,7 +850,10 @@ impl GitHubClient {
                 }
             }
             Err(e) => {
-                log::warn!("Stargazer probe request failed, using calculated page: {}", e);
+                log::warn!(
+                    "Stargazer probe request failed, using calculated page: {}",
+                    e
+                );
                 calculated_last_page
             }
         }
@@ -856,7 +921,11 @@ impl GitHubClient {
     /// - Recent workflow runs
     ///
     /// Returns `None` if Actions is not enabled or no runs exist.
-    pub async fn ci_status(&self, owner: &str, repo: &str) -> Result<Option<crate::core::models::CIStatus>> {
+    pub async fn ci_status(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<Option<crate::core::models::CIStatus>> {
         let metrics = CiMetrics::new(self.token.as_deref());
         metrics.fetch_stats(owner, repo).await
     }
@@ -869,7 +938,11 @@ impl GitHubClient {
     /// - Overall health percentage score
     ///
     /// Returns `None` if the API is unavailable or returns 404/204.
-    pub async fn community_health(&self, owner: &str, repo: &str) -> Result<Option<CommunityHealth>> {
+    pub async fn community_health(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<Option<CommunityHealth>> {
         let metrics = CommunityMetrics::new(self.token.as_deref());
         metrics.fetch_stats(owner, repo).await
     }
@@ -916,10 +989,7 @@ impl GitHubClient {
             .get("rate")
             .context("Missing 'rate' field in rate limit response")?;
         let limit = rate.get("limit").and_then(|v| v.as_u64()).unwrap_or(0);
-        let remaining = rate
-            .get("remaining")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
+        let remaining = rate.get("remaining").and_then(|v| v.as_u64()).unwrap_or(0);
         let reset_ts = rate.get("reset").and_then(|v| v.as_i64()).unwrap_or(0);
         let reset_at = DateTime::from_timestamp(reset_ts, 0).unwrap_or_else(Utc::now);
 
@@ -964,7 +1034,7 @@ impl GitHubClient {
             releases,
             velocity,
             security_alerts,
-            ci_status: None,       // CI status is fetched separately in the main snapshot flow
+            ci_status: None, // CI status is fetched separately in the main snapshot flow
             community_health: None, // Community health is fetched separately in the main snapshot flow
         })
     }

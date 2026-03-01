@@ -1,9 +1,9 @@
 use ratatui::{prelude::*, widgets::*};
 
+use super::utils::{format_age, format_count, resample_to_width, trim_leading_zeros, truncate};
+use super::{App, Panel, StarTimeframe};
 use crate::core::models::Issue;
 use crate::tui::widgets::BrailleSparkline;
-use super::utils::{format_count, format_age, truncate, trim_leading_zeros, resample_to_width};
-use super::{App, Panel, StarTimeframe};
 
 impl App {
     pub(super) fn panel_block(&self, panel: Panel, title: String) -> Block<'_> {
@@ -14,19 +14,23 @@ impl App {
 
         let border_style = if flash_intensity > 0.5 {
             // Strong flash - use highlight color for maximum visibility
-            Style::default().fg(self.theme.text_highlight_color()).bold()
+            Style::default()
+                .fg(self.theme.text_highlight_color())
+                .bold()
         } else if flash_intensity > 0.0 {
             // Fading flash - use selected border color with modifier
-            Style::default().fg(self.theme.border_selected_color()).bold()
+            Style::default()
+                .fg(self.theme.border_selected_color())
+                .bold()
         } else if is_selected {
-            Style::default().fg(self.theme.border_selected_color()).bold()
+            Style::default()
+                .fg(self.theme.border_selected_color())
+                .bold()
         } else {
             Style::default().fg(self.theme.border_unselected_color())
         };
 
-        Block::bordered()
-            .title(title)
-            .border_style(border_style)
+        Block::bordered().title(title).border_style(border_style)
     }
 
     pub(super) fn render_stars(&self, frame: &mut Frame, area: Rect) {
@@ -45,24 +49,23 @@ impl App {
             format_count(snap.stars.total_count)
         };
 
-        let block = self.panel_block(
-            Panel::Stars,
-            format!(" ★ Stars — {} ", display_count),
-        );
+        let block = self.panel_block(Panel::Stars, format!(" ★ Stars — {} ", display_count));
         let inner = block.inner(area);
         frame.render_widget(block, area);
 
-        let [label_area, spark_area] = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Fill(1),
-        ])
-        .areas(inner);
+        let [label_area, spark_area] =
+            Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(inner);
 
         // Select the appropriate sparkline data based on the selected timeframe
         let data: Vec<u64> = match self.star_timeframe {
             StarTimeframe::Days30 => snap.stars.sparkline_30d.iter().map(|&v| v as u64).collect(),
             StarTimeframe::Days90 => snap.stars.sparkline_90d.iter().map(|&v| v as u64).collect(),
-            StarTimeframe::Year1 => snap.stars.sparkline_365d.iter().map(|&v| v as u64).collect(),
+            StarTimeframe::Year1 => snap
+                .stars
+                .sparkline_365d
+                .iter()
+                .map(|&v| v as u64)
+                .collect(),
         };
 
         let data_len = data.len();
@@ -87,7 +90,8 @@ impl App {
         } else {
             effective_label
         };
-        let label = Paragraph::new(label_text).style(Style::default().fg(self.theme.text_secondary_color()));
+        let label = Paragraph::new(label_text)
+            .style(Style::default().fg(self.theme.text_secondary_color()));
         frame.render_widget(label, label_area);
 
         // Resample to fill the actual available width (account for Braille mode which uses 2 chars per point)
@@ -140,15 +144,25 @@ impl App {
         let total_pages = ((filtered_count as usize + per_page - 1) / per_page).max(1);
 
         // Check if issues were truncated (limited by API fetch)
-        let truncated = snap.issues.truncated || (snap.repo.open_issues_count > snap.issues.total_open);
+        let truncated =
+            snap.issues.truncated || (snap.repo.open_issues_count > snap.issues.total_open);
         let trunc_indicator = if truncated { "+" } else { "" };
 
         let title = if has_filter {
-            format!(" Issues — Showing {} of {}{} (page {}/{}) ", filtered_count, display_total, trunc_indicator, current_page, total_pages)
+            format!(
+                " Issues — Showing {} of {}{} (page {}/{}) ",
+                filtered_count, display_total, trunc_indicator, current_page, total_pages
+            )
         } else if self.selected_panel == Panel::Issues {
-            format!(" Issues — {}{} open (page {}/{}) [+/- to change] ", display_total, trunc_indicator, current_page, total_pages)
+            format!(
+                " Issues — {}{} open (page {}/{}) [+/- to change] ",
+                display_total, trunc_indicator, current_page, total_pages
+            )
         } else {
-            format!(" Issues — {}{} open (page {}/{}) ", display_total, trunc_indicator, current_page, total_pages)
+            format!(
+                " Issues — {}{} open (page {}/{}) ",
+                display_total, trunc_indicator, current_page, total_pages
+            )
         };
 
         let block = self.panel_block(Panel::Issues, title);
@@ -237,28 +251,40 @@ impl App {
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Open:    ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Open:    ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}", display_open),
                     Style::default().fg(self.theme.indicator_success_color()),
                 ),
             ]),
             Line::from(vec![
-                Span::styled("Draft:   ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Draft:   ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}", pr.draft_count),
                     Style::default().fg(self.theme.indicator_warning_color()),
                 ),
             ]),
             Line::from(vec![
-                Span::styled("Ready:   ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Ready:   ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}", pr.ready_count),
                     Style::default().fg(self.theme.indicator_info_color()),
                 ),
             ]),
             Line::from(vec![
-                Span::styled("Merged:  ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Merged:  ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{} (30d)", pr.merged_last_30d.len()),
                     Style::default().fg(self.theme.indicator_error_color()),
@@ -266,8 +292,14 @@ impl App {
             ]),
             Line::from(""),
             Line::from(vec![
-                Span::styled("Avg merge: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(merge_time, Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Avg merge: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    merge_time,
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
         ];
 
@@ -298,11 +330,20 @@ impl App {
         let has_filter = !self.search_query.is_empty();
         let limit_label = self.contributors_limit.label();
         let title = if has_filter {
-            format!(" Contributors — Showing {} of {} ({} view) ", filtered_count, display_total, limit_label)
+            format!(
+                " Contributors — Showing {} of {} ({} view) ",
+                filtered_count, display_total, limit_label
+            )
         } else if self.selected_panel == Panel::Contributors {
-            format!(" Contributors — {} total ({} view) [+/- to change] ", display_total, limit_label)
+            format!(
+                " Contributors — {} total ({} view) [+/- to change] ",
+                display_total, limit_label
+            )
         } else {
-            format!(" Contributors — {} total ({} view) ", display_total, limit_label)
+            format!(
+                " Contributors — {} total ({} view) ",
+                display_total, limit_label
+            )
         };
 
         let block = self.panel_block(Panel::Contributors, title);
@@ -321,7 +362,10 @@ impl App {
                         format!("{}. ", i + self.contributors_scroll + 1),
                         Style::default().fg(self.theme.text_secondary_color()),
                     ),
-                    Span::styled(c.username.as_str(), Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        c.username.as_str(),
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                     Span::styled(
                         format!(" ({})", c.commit_count),
                         Style::default().fg(self.theme.text_secondary_color()),
@@ -377,11 +421,20 @@ impl App {
         let limit_count = self.releases_limit.count();
         let showing_count = filtered_releases.len().min(limit_count);
         let title = if has_filter {
-            format!(" Releases — {} of {} matches (showing {}) ", filtered_count, display_total, showing_count)
+            format!(
+                " Releases — {} of {} matches (showing {}) ",
+                filtered_count, display_total, showing_count
+            )
         } else if self.selected_panel == Panel::Releases {
-            format!(" Releases — {} total (showing {}) [+/- to change] ", display_total, showing_count)
+            format!(
+                " Releases — {} total (showing {}) [+/- to change] ",
+                display_total, showing_count
+            )
         } else {
-            format!(" Releases — {} total (showing {}) ", display_total, showing_count)
+            format!(
+                " Releases — {} total (showing {}) ",
+                display_total, showing_count
+            )
         };
 
         let block = self.panel_block(Panel::Releases, title);
@@ -416,7 +469,10 @@ impl App {
                     .map(|d| format!("{}d ago", d))
                     .unwrap_or_default();
 
-                let mut spans = vec![Span::styled(name, Style::default().fg(self.theme.text_primary_color()))];
+                let mut spans = vec![Span::styled(
+                    name,
+                    Style::default().fg(self.theme.text_primary_color()),
+                )];
 
                 if !age.is_empty() {
                     spans.push(Span::styled(
@@ -478,9 +534,15 @@ impl App {
                     format!("  {} ", week_label),
                     Style::default().fg(self.theme.text_secondary_color()),
                 ),
-                Span::styled(format!("+{}", week.opened), Style::default().fg(self.theme.indicator_success_color())),
+                Span::styled(
+                    format!("+{}", week.opened),
+                    Style::default().fg(self.theme.indicator_success_color()),
+                ),
                 Span::styled("/", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("-{}", week.closed), Style::default().fg(self.theme.indicator_error_color())),
+                Span::styled(
+                    format!("-{}", week.closed),
+                    Style::default().fg(self.theme.indicator_error_color()),
+                ),
             ]));
         }
 
@@ -496,7 +558,10 @@ impl App {
                     format!("  {} ", week_label),
                     Style::default().fg(self.theme.text_secondary_color()),
                 ),
-                Span::styled(format!("+{}", week.opened), Style::default().fg(self.theme.indicator_success_color())),
+                Span::styled(
+                    format!("+{}", week.opened),
+                    Style::default().fg(self.theme.indicator_success_color()),
+                ),
                 Span::styled("/", Style::default().fg(self.theme.text_secondary_color())),
                 Span::styled(
                     format!("-{}", week.closed),
@@ -529,39 +594,56 @@ impl App {
 
         let lines = vec![
             Line::from(vec![
-                Span::styled("Total:    ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Total:    ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}", sec.total_open),
                     if sec.total_open > 0 {
-                        Style::default().fg(self.theme.severity_critical_color()).bold()
+                        Style::default()
+                            .fg(self.theme.severity_critical_color())
+                            .bold()
                     } else {
                         Style::default().fg(self.theme.indicator_success_color())
                     },
                 ),
             ]),
             Line::from(vec![
-                Span::styled("Critical: ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Critical: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}", sec.critical_count),
                     self.severity_style(sec.critical_count, self.theme.severity_critical_color()),
                 ),
             ]),
             Line::from(vec![
-                Span::styled("High:     ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "High:     ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}", sec.high_count),
                     self.severity_style(sec.high_count, self.theme.severity_high_color()),
                 ),
             ]),
             Line::from(vec![
-                Span::styled("Medium:   ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Medium:   ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}", sec.medium_count),
                     self.severity_style(sec.medium_count, self.theme.severity_medium_color()),
                 ),
             ]),
             Line::from(vec![
-                Span::styled("Low:      ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Low:      ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}", sec.low_count),
                     self.severity_style(sec.low_count, self.theme.severity_low_color()),
@@ -583,21 +665,24 @@ impl App {
         let block = self.panel_block(Panel::CI, " CI Status ".to_string());
 
         let Some(ref ci) = snap.ci_status else {
-            let paragraph =
-                Paragraph::new("GitHub Actions\nnot available\n(disabled or no runs)")
-                    .style(Style::default().fg(self.theme.text_secondary_color()))
-                    .block(block);
+            let paragraph = Paragraph::new("GitHub Actions\nnot available\n(disabled or no runs)")
+                .style(Style::default().fg(self.theme.text_secondary_color()))
+                .block(block);
             frame.render_widget(paragraph, area);
             return;
         };
 
         // Format success rate with color
         let success_rate_style = if ci.success_rate >= 90.0 {
-            Style::default().fg(self.theme.indicator_success_color()).bold()
+            Style::default()
+                .fg(self.theme.indicator_success_color())
+                .bold()
         } else if ci.success_rate >= 70.0 {
             Style::default().fg(self.theme.indicator_warning_color())
         } else {
-            Style::default().fg(self.theme.indicator_error_color()).bold()
+            Style::default()
+                .fg(self.theme.indicator_error_color())
+                .bold()
         };
 
         // Format average duration
@@ -606,11 +691,17 @@ impl App {
         } else if ci.avg_duration_seconds < 3600 {
             format!("{}m", ci.avg_duration_seconds / 60)
         } else {
-            format!("{}h {}m", ci.avg_duration_seconds / 3600, (ci.avg_duration_seconds % 3600) / 60)
+            format!(
+                "{}h {}m",
+                ci.avg_duration_seconds / 3600,
+                (ci.avg_duration_seconds % 3600) / 60
+            )
         };
 
         // Get last run status with icon
-        let (last_status_icon, last_status_text) = ci.recent_runs.first()
+        let (last_status_icon, last_status_text) = ci
+            .recent_runs
+            .first()
             .map(|run| {
                 let icon = match run.conclusion.as_deref() {
                     Some("success") => ("✓", self.theme.indicator_success_color()),
@@ -630,26 +721,50 @@ impl App {
                 (Span::styled(icon, Style::default().fg(color).bold()), text)
             })
             .unwrap_or_else(|| {
-                (Span::styled("—", Style::default().fg(self.theme.text_secondary_color())), "N/A")
+                (
+                    Span::styled("—", Style::default().fg(self.theme.text_secondary_color())),
+                    "N/A",
+                )
             });
 
         let lines = vec![
             Line::from(vec![
-                Span::styled("Success:  ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Success:  ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(format!("{:.1}%", ci.success_rate), success_rate_style),
             ]),
             Line::from(vec![
-                Span::styled("Last:     ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Last:     ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 last_status_icon,
-                Span::styled(format!(" {}", last_status_text), Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    format!(" {}", last_status_text),
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Runs:     ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("{} (30d)", ci.total_runs_30d), Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Runs:     ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("{} (30d)", ci.total_runs_30d),
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Avg time: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(avg_duration, Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Avg time: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    avg_duration,
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
         ];
 

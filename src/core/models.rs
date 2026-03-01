@@ -49,9 +49,7 @@ impl RepoSnapshot {
     /// Get days since the last release
     /// Returns None if there are no releases
     pub fn days_since_last_release(&self) -> Option<i64> {
-        self.releases
-            .first()
-            .and_then(|release| release.days_since)
+        self.releases.first().and_then(|release| release.days_since)
     }
 
     /// Get count of open issues
@@ -327,7 +325,8 @@ impl SnapshotDiff {
             contributors_delta: current.contributors.total_unique as i64
                 - previous.contributors.total_unique as i64,
             forks_delta: current.repo.forks_count as i64 - previous.repo.forks_count as i64,
-            watchers_delta: current.repo.watchers_count as i64 - previous.repo.watchers_count as i64,
+            watchers_delta: current.repo.watchers_count as i64
+                - previous.repo.watchers_count as i64,
             releases_delta: current.releases.len() as i64 - previous.releases.len() as i64,
         }
     }
@@ -459,15 +458,13 @@ mod tests {
                 total_runs_30d: 50,
                 success_rate: 85.5,
                 avg_duration_seconds: 300,
-                recent_runs: vec![
-                    WorkflowRun {
-                        name: "CI".to_string(),
-                        status: "completed".to_string(),
-                        conclusion: Some("success".to_string()),
-                        created_at: Utc::now(),
-                        duration_seconds: 180,
-                    },
-                ],
+                recent_runs: vec![WorkflowRun {
+                    name: "CI".to_string(),
+                    status: "completed".to_string(),
+                    conclusion: Some("success".to_string()),
+                    created_at: Utc::now(),
+                    duration_seconds: 180,
+                }],
             }),
             community_health: Some(CommunityHealth {
                 has_readme: true,
@@ -494,7 +491,10 @@ mod tests {
         assert_eq!(original.repo.name, deserialized.repo.name);
         assert_eq!(original.stars.total_count, deserialized.stars.total_count);
         assert_eq!(original.issues.total_open, deserialized.issues.total_open);
-        assert_eq!(original.pull_requests.open_count, deserialized.pull_requests.open_count);
+        assert_eq!(
+            original.pull_requests.open_count,
+            deserialized.pull_requests.open_count
+        );
         assert_eq!(
             original.contributors.total_unique,
             deserialized.contributors.total_unique
@@ -631,8 +631,14 @@ mod tests {
             serde_json::from_str(&json).expect("Failed to deserialize");
 
         // Verify UUID roundtrip
-        assert_eq!(snapshot.snapshot_history_id, deserialized.snapshot_history_id);
-        assert_eq!(snapshot.previous_snapshot_at, deserialized.previous_snapshot_at);
+        assert_eq!(
+            snapshot.snapshot_history_id,
+            deserialized.snapshot_history_id
+        );
+        assert_eq!(
+            snapshot.previous_snapshot_at,
+            deserialized.previous_snapshot_at
+        );
     }
 
     #[test]
@@ -788,17 +794,15 @@ mod tests {
     #[test]
     fn test_oldest_issue_age_days_mixed_issues() {
         let mut snapshot = create_sample_snapshot();
-        snapshot.issues.unlabelled = vec![
-            Issue {
-                number: 100,
-                title: "Old unlabelled".to_string(),
-                author: "user".to_string(),
-                created_at: Utc::now() - chrono::Duration::days(45),
-                updated_at: Utc::now(),
-                labels: vec![],
-                comments_count: 0,
-            },
-        ];
+        snapshot.issues.unlabelled = vec![Issue {
+            number: 100,
+            title: "Old unlabelled".to_string(),
+            author: "user".to_string(),
+            created_at: Utc::now() - chrono::Duration::days(45),
+            updated_at: Utc::now(),
+            labels: vec![],
+            comments_count: 0,
+        }];
 
         // The by_label issues are from create_sample_snapshot and are from Utc::now()
         // So the oldest should be the unlabelled one (45 days)

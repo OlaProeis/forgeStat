@@ -46,10 +46,7 @@ impl<'a> PrsMetrics<'a> {
         let open_count = pulls.len() as u64;
 
         // Count draft vs ready PRs
-        let draft_count = pulls
-            .iter()
-            .filter(|pr| pr.draft.unwrap_or(false))
-            .count() as u64;
+        let draft_count = pulls.iter().filter(|pr| pr.draft.unwrap_or(false)).count() as u64;
         let ready_count = open_count - draft_count;
 
         // Fetch recently merged PRs (last 30 days)
@@ -76,13 +73,10 @@ impl<'a> PrsMetrics<'a> {
                     continue;
                 }
                 let created_at = pr.created_at.unwrap_or_else(Utc::now);
-                let time_to_merge_hours =
-                    (merged_at - created_at).num_seconds() as f64 / 3600.0;
+                let time_to_merge_hours = (merged_at - created_at).num_seconds() as f64 / 3600.0;
 
                 // Handle optional fields for PR
-                let title = pr
-                    .title
-                    .unwrap_or_else(|| format!("PR #{}" , pr.number));
+                let title = pr.title.unwrap_or_else(|| format!("PR #{}", pr.number));
                 let author = pr
                     .user
                     .as_ref()

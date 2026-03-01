@@ -116,7 +116,8 @@ impl WatchlistApp {
                     let stars = snapshot.stars.total_count;
 
                     // Calculate 30d stars from sparkline sum
-                    let stars_30d: u64 = snapshot.stars.sparkline_30d.iter().map(|&v| v as u64).sum();
+                    let stars_30d: u64 =
+                        snapshot.stars.sparkline_30d.iter().map(|&v| v as u64).sum();
 
                     let issues = snapshot.open_issues_count() as u64;
                     let prs = snapshot.open_prs_count() as u64;
@@ -178,9 +179,11 @@ impl WatchlistApp {
     where
         B::Error: std::fmt::Debug,
     {
-        terminal.draw(|frame| {
-            self.draw(frame);
-        }).map_err(|e| anyhow::anyhow!("Terminal draw error: {:?}", e))?;
+        terminal
+            .draw(|frame| {
+                self.draw(frame);
+            })
+            .map_err(|e| anyhow::anyhow!("Terminal draw error: {:?}", e))?;
         Ok(())
     }
 
@@ -211,7 +214,10 @@ impl WatchlistApp {
             .border_style(Style::default().fg(self.theme.header_border_color()));
 
         let header_text = if self.is_fetching {
-            format!("{} Fetching repository data...", self.spinner.current_char())
+            format!(
+                "{} Fetching repository data...",
+                self.spinner.current_char()
+            )
         } else {
             let loaded = self.snapshots.len();
             let total = self.repos.len();
@@ -273,8 +279,7 @@ impl WatchlistApp {
                 };
 
                 // Format cells
-                let repo_cell = Cell::from(format!("{}/{}"
-, row.owner, row.repo_name));
+                let repo_cell = Cell::from(format!("{}/{}", row.owner, row.repo_name));
 
                 let health_cell = if let Some(ref health) = row.health {
                     Cell::from(format!("{} {}", health.total, health.grade.as_letter()))
@@ -349,7 +354,8 @@ impl WatchlistApp {
         );
 
         // Update table state selection
-        self.table_state.select(Some(self.selected_index.saturating_sub(self.scroll_offset)));
+        self.table_state
+            .select(Some(self.selected_index.saturating_sub(self.scroll_offset)));
 
         frame.render_stateful_widget(table, area, &mut self.table_state);
     }
@@ -425,22 +431,29 @@ impl WatchlistApp {
                                 if self.selected_index < self.repos.len().saturating_sub(1) {
                                     self.selected_index += 1;
                                     // Adjust scroll if needed
-                                    if self.selected_index >= self.scroll_offset + self.rows_visible {
-                                        self.scroll_offset = self.selected_index.saturating_sub(self.rows_visible - 1);
+                                    if self.selected_index >= self.scroll_offset + self.rows_visible
+                                    {
+                                        self.scroll_offset = self
+                                            .selected_index
+                                            .saturating_sub(self.rows_visible - 1);
                                     }
                                     self.render(terminal)?;
                                 }
                             }
                             KeyCode::PageUp => {
-                                self.selected_index = self.selected_index.saturating_sub(self.rows_visible);
-                                self.scroll_offset = self.scroll_offset.saturating_sub(self.rows_visible);
+                                self.selected_index =
+                                    self.selected_index.saturating_sub(self.rows_visible);
+                                self.scroll_offset =
+                                    self.scroll_offset.saturating_sub(self.rows_visible);
                                 self.render(terminal)?;
                             }
                             KeyCode::PageDown => {
                                 let max_idx = self.repos.len().saturating_sub(1);
-                                self.selected_index = (self.selected_index + self.rows_visible).min(max_idx);
+                                self.selected_index =
+                                    (self.selected_index + self.rows_visible).min(max_idx);
                                 if self.selected_index >= self.scroll_offset + self.rows_visible {
-                                    self.scroll_offset = self.selected_index.saturating_sub(self.rows_visible - 1);
+                                    self.scroll_offset =
+                                        self.selected_index.saturating_sub(self.rows_visible - 1);
                                 }
                                 self.render(terminal)?;
                             }
@@ -451,35 +464,35 @@ impl WatchlistApp {
                             }
                             KeyCode::End => {
                                 self.selected_index = self.repos.len().saturating_sub(1);
-                                self.scroll_offset = self.repos.len().saturating_sub(self.rows_visible);
+                                self.scroll_offset =
+                                    self.repos.len().saturating_sub(self.rows_visible);
                                 self.render(terminal)?;
                             }
                             _ => {}
                         }
                     }
-                    Event::Mouse(mouse) => {
-                        match mouse.kind {
-                            MouseEventKind::ScrollUp => {
-                                if self.selected_index > 0 {
-                                    self.selected_index -= 1;
-                                    if self.selected_index < self.scroll_offset {
-                                        self.scroll_offset = self.selected_index;
-                                    }
-                                    self.render(terminal)?;
+                    Event::Mouse(mouse) => match mouse.kind {
+                        MouseEventKind::ScrollUp => {
+                            if self.selected_index > 0 {
+                                self.selected_index -= 1;
+                                if self.selected_index < self.scroll_offset {
+                                    self.scroll_offset = self.selected_index;
                                 }
+                                self.render(terminal)?;
                             }
-                            MouseEventKind::ScrollDown => {
-                                if self.selected_index < self.repos.len().saturating_sub(1) {
-                                    self.selected_index += 1;
-                                    if self.selected_index >= self.scroll_offset + self.rows_visible {
-                                        self.scroll_offset = self.selected_index.saturating_sub(self.rows_visible - 1);
-                                    }
-                                    self.render(terminal)?;
-                                }
-                            }
-                            _ => {}
                         }
-                    }
+                        MouseEventKind::ScrollDown => {
+                            if self.selected_index < self.repos.len().saturating_sub(1) {
+                                self.selected_index += 1;
+                                if self.selected_index >= self.scroll_offset + self.rows_visible {
+                                    self.scroll_offset =
+                                        self.selected_index.saturating_sub(self.rows_visible - 1);
+                                }
+                                self.render(terminal)?;
+                            }
+                        }
+                        _ => {}
+                    },
                     _ => {}
                 }
             }

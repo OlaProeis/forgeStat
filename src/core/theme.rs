@@ -72,27 +72,27 @@ impl ThemeConfig {
     pub fn default_theme() -> Self {
         Self {
             name: "default".to_string(),
-            border_unselected: "#6b7280".to_string(),      // gray-500
-            border_selected: "#22d3ee".to_string(),        // cyan-400
-            header_border: "#ffffff".to_string(),            // white
-            sparkline: "#fbbf24".to_string(),               // amber-400
-            status_live: "#4ade80".to_string(),             // green-400
-            status_stale: "#facc15".to_string(),            // yellow-400
-            status_offline: "#f87171".to_string(),          // red-400
-            text_primary: "#ffffff".to_string(),            // white
-            text_secondary: "#9ca3af".to_string(),           // gray-400
-            text_highlight: "#ffffff".to_string(),          // white
-            indicator_success: "#4ade80".to_string(),       // green-400
-            indicator_warning: "#facc15".to_string(),       // yellow-400
-            indicator_error: "#f87171".to_string(),         // red-400
-            indicator_info: "#22d3ee".to_string(),          // cyan-400
-            indicator_muted: "#6b7280".to_string(),          // gray-500
-            severity_critical: "#ef4444".to_string(),      // red-500
-            severity_high: "#f87171".to_string(),           // light red
-            severity_medium: "#facc15".to_string(),         // yellow-400
-            severity_low: "#6b7280".to_string(),            // gray-500
-            help_border: "#22d3ee".to_string(),              // cyan-400
-            help_title: "#22d3ee".to_string(),               // cyan-400
+            border_unselected: "#6b7280".to_string(), // gray-500
+            border_selected: "#22d3ee".to_string(),   // cyan-400
+            header_border: "#ffffff".to_string(),     // white
+            sparkline: "#fbbf24".to_string(),         // amber-400
+            status_live: "#4ade80".to_string(),       // green-400
+            status_stale: "#facc15".to_string(),      // yellow-400
+            status_offline: "#f87171".to_string(),    // red-400
+            text_primary: "#ffffff".to_string(),      // white
+            text_secondary: "#9ca3af".to_string(),    // gray-400
+            text_highlight: "#ffffff".to_string(),    // white
+            indicator_success: "#4ade80".to_string(), // green-400
+            indicator_warning: "#facc15".to_string(), // yellow-400
+            indicator_error: "#f87171".to_string(),   // red-400
+            indicator_info: "#22d3ee".to_string(),    // cyan-400
+            indicator_muted: "#6b7280".to_string(),   // gray-500
+            severity_critical: "#ef4444".to_string(), // red-500
+            severity_high: "#f87171".to_string(),     // light red
+            severity_medium: "#facc15".to_string(),   // yellow-400
+            severity_low: "#6b7280".to_string(),      // gray-500
+            help_border: "#22d3ee".to_string(),       // cyan-400
+            help_title: "#22d3ee".to_string(),        // cyan-400
             braille_mode: false,
         }
     }
@@ -101,27 +101,27 @@ impl ThemeConfig {
     pub fn monochrome_theme() -> Self {
         Self {
             name: "monochrome".to_string(),
-            border_unselected: "#6b7280".to_string(),      // gray-500
-            border_selected: "#ffffff".to_string(),          // white
-            header_border: "#d1d5db".to_string(),            // gray-300
-            sparkline: "#9ca3af".to_string(),               // gray-400
-            status_live: "#9ca3af".to_string(),             // gray-400
-            status_stale: "#6b7280".to_string(),            // gray-500
-            status_offline: "#4b5563".to_string(),          // gray-600
-            text_primary: "#ffffff".to_string(),            // white
-            text_secondary: "#9ca3af".to_string(),           // gray-400
-            text_highlight: "#ffffff".to_string(),          // white
-            indicator_success: "#d1d5db".to_string(),       // gray-300
-            indicator_warning: "#9ca3af".to_string(),       // gray-400
-            indicator_error: "#6b7280".to_string(),         // gray-500
-            indicator_info: "#d1d5db".to_string(),          // gray-300
-            indicator_muted: "#4b5563".to_string(),        // gray-600
-            severity_critical: "#ffffff".to_string(),      // white (bold)
-            severity_high: "#d1d5db".to_string(),            // gray-300
-            severity_medium: "#9ca3af".to_string(),         // gray-400
-            severity_low: "#6b7280".to_string(),            // gray-500
-            help_border: "#d1d5db".to_string(),              // gray-300
-            help_title: "#ffffff".to_string(),               // white
+            border_unselected: "#6b7280".to_string(), // gray-500
+            border_selected: "#ffffff".to_string(),   // white
+            header_border: "#d1d5db".to_string(),     // gray-300
+            sparkline: "#9ca3af".to_string(),         // gray-400
+            status_live: "#9ca3af".to_string(),       // gray-400
+            status_stale: "#6b7280".to_string(),      // gray-500
+            status_offline: "#4b5563".to_string(),    // gray-600
+            text_primary: "#ffffff".to_string(),      // white
+            text_secondary: "#9ca3af".to_string(),    // gray-400
+            text_highlight: "#ffffff".to_string(),    // white
+            indicator_success: "#d1d5db".to_string(), // gray-300
+            indicator_warning: "#9ca3af".to_string(), // gray-400
+            indicator_error: "#6b7280".to_string(),   // gray-500
+            indicator_info: "#d1d5db".to_string(),    // gray-300
+            indicator_muted: "#4b5563".to_string(),   // gray-600
+            severity_critical: "#ffffff".to_string(), // white (bold)
+            severity_high: "#d1d5db".to_string(),     // gray-300
+            severity_medium: "#9ca3af".to_string(),   // gray-400
+            severity_low: "#6b7280".to_string(),      // gray-500
+            help_border: "#d1d5db".to_string(),       // gray-300
+            help_title: "#ffffff".to_string(),        // white
             braille_mode: false,
         }
     }
@@ -130,27 +130,27 @@ impl ThemeConfig {
     pub fn high_contrast_theme() -> Self {
         Self {
             name: "high-contrast".to_string(),
-            border_unselected: "#808080".to_string(),        // gray
-            border_selected: "#00ffff".to_string(),          // bright cyan
-            header_border: "#ffffff".to_string(),            // white
-            sparkline: "#ffff00".to_string(),               // bright yellow
-            status_live: "#00ff00".to_string(),             // bright green
-            status_stale: "#ffff00".to_string(),            // bright yellow
-            status_offline: "#ff0000".to_string(),          // bright red
-            text_primary: "#ffffff".to_string(),            // white
-            text_secondary: "#c0c0c0".to_string(),           // silver
-            text_highlight: "#ffffff".to_string(),          // white
-            indicator_success: "#00ff00".to_string(),       // bright green
-            indicator_warning: "#ffff00".to_string(),       // bright yellow
-            indicator_error: "#ff0000".to_string(),         // bright red
-            indicator_info: "#00ffff".to_string(),          // bright cyan
-            indicator_muted: "#808080".to_string(),          // gray
-            severity_critical: "#ff0000".to_string(),      // bright red
-            severity_high: "#ff6600".to_string(),           // orange-red
-            severity_medium: "#ffff00".to_string(),         // bright yellow
-            severity_low: "#808080".to_string(),            // gray
-            help_border: "#00ffff".to_string(),            // bright cyan
-            help_title: "#00ffff".to_string(),               // bright cyan
+            border_unselected: "#808080".to_string(), // gray
+            border_selected: "#00ffff".to_string(),   // bright cyan
+            header_border: "#ffffff".to_string(),     // white
+            sparkline: "#ffff00".to_string(),         // bright yellow
+            status_live: "#00ff00".to_string(),       // bright green
+            status_stale: "#ffff00".to_string(),      // bright yellow
+            status_offline: "#ff0000".to_string(),    // bright red
+            text_primary: "#ffffff".to_string(),      // white
+            text_secondary: "#c0c0c0".to_string(),    // silver
+            text_highlight: "#ffffff".to_string(),    // white
+            indicator_success: "#00ff00".to_string(), // bright green
+            indicator_warning: "#ffff00".to_string(), // bright yellow
+            indicator_error: "#ff0000".to_string(),   // bright red
+            indicator_info: "#00ffff".to_string(),    // bright cyan
+            indicator_muted: "#808080".to_string(),   // gray
+            severity_critical: "#ff0000".to_string(), // bright red
+            severity_high: "#ff6600".to_string(),     // orange-red
+            severity_medium: "#ffff00".to_string(),   // bright yellow
+            severity_low: "#808080".to_string(),      // gray
+            help_border: "#00ffff".to_string(),       // bright cyan
+            help_title: "#00ffff".to_string(),        // bright cyan
             braille_mode: false,
         }
     }
@@ -159,27 +159,27 @@ impl ThemeConfig {
     pub fn solarized_dark_theme() -> Self {
         Self {
             name: "solarized-dark".to_string(),
-            border_unselected: "#586e75".to_string(),        // base01
-            border_selected: "#2aa198".to_string(),          // cyan
-            header_border: "#eee8d5".to_string(),            // base2
-            sparkline: "#b58900".to_string(),               // yellow
-            status_live: "#859900".to_string(),             // green
-            status_stale: "#b58900".to_string(),            // yellow
-            status_offline: "#dc322f".to_string(),          // red
-            text_primary: "#eee8d5".to_string(),            // base2
-            text_secondary: "#839496".to_string(),           // base0
-            text_highlight: "#fdf6e3".to_string(),           // base3
-            indicator_success: "#859900".to_string(),       // green
-            indicator_warning: "#b58900".to_string(),       // yellow
-            indicator_error: "#dc322f".to_string(),         // red
-            indicator_info: "#2aa198".to_string(),          // cyan
-            indicator_muted: "#586e75".to_string(),          // base01
-            severity_critical: "#dc322f".to_string(),      // red
-            severity_high: "#cb4b16".to_string(),           // orange
-            severity_medium: "#b58900".to_string(),         // yellow
-            severity_low: "#586e75".to_string(),            // base01
-            help_border: "#2aa198".to_string(),             // cyan
-            help_title: "#2aa198".to_string(),               // cyan
+            border_unselected: "#586e75".to_string(), // base01
+            border_selected: "#2aa198".to_string(),   // cyan
+            header_border: "#eee8d5".to_string(),     // base2
+            sparkline: "#b58900".to_string(),         // yellow
+            status_live: "#859900".to_string(),       // green
+            status_stale: "#b58900".to_string(),      // yellow
+            status_offline: "#dc322f".to_string(),    // red
+            text_primary: "#eee8d5".to_string(),      // base2
+            text_secondary: "#839496".to_string(),    // base0
+            text_highlight: "#fdf6e3".to_string(),    // base3
+            indicator_success: "#859900".to_string(), // green
+            indicator_warning: "#b58900".to_string(), // yellow
+            indicator_error: "#dc322f".to_string(),   // red
+            indicator_info: "#2aa198".to_string(),    // cyan
+            indicator_muted: "#586e75".to_string(),   // base01
+            severity_critical: "#dc322f".to_string(), // red
+            severity_high: "#cb4b16".to_string(),     // orange
+            severity_medium: "#b58900".to_string(),   // yellow
+            severity_low: "#586e75".to_string(),      // base01
+            help_border: "#2aa198".to_string(),       // cyan
+            help_title: "#2aa198".to_string(),        // cyan
             braille_mode: false,
         }
     }
@@ -188,27 +188,27 @@ impl ThemeConfig {
     pub fn dracula_theme() -> Self {
         Self {
             name: "dracula".to_string(),
-            border_unselected: "#6272a4".to_string(),        // comment
-            border_selected: "#8be9fd".to_string(),          // cyan
-            header_border: "#f8f8f2".to_string(),            // foreground
-            sparkline: "#f1fa8c".to_string(),               // yellow
-            status_live: "#50fa7b".to_string(),             // green
-            status_stale: "#f1fa8c".to_string(),            // yellow
-            status_offline: "#ff5555".to_string(),          // red
-            text_primary: "#f8f8f2".to_string(),            // foreground
-            text_secondary: "#6272a4".to_string(),           // comment
-            text_highlight: "#ffffff".to_string(),          // white
-            indicator_success: "#50fa7b".to_string(),       // green
-            indicator_warning: "#f1fa8c".to_string(),       // yellow
-            indicator_error: "#ff5555".to_string(),         // red
-            indicator_info: "#8be9fd".to_string(),          // cyan
-            indicator_muted: "#6272a4".to_string(),          // comment
-            severity_critical: "#ff5555".to_string(),      // red
-            severity_high: "#ff79c6".to_string(),           // pink
-            severity_medium: "#f1fa8c".to_string(),         // yellow
-            severity_low: "#6272a4".to_string(),            // comment
-            help_border: "#8be9fd".to_string(),             // cyan
-            help_title: "#8be9fd".to_string(),               // cyan
+            border_unselected: "#6272a4".to_string(), // comment
+            border_selected: "#8be9fd".to_string(),   // cyan
+            header_border: "#f8f8f2".to_string(),     // foreground
+            sparkline: "#f1fa8c".to_string(),         // yellow
+            status_live: "#50fa7b".to_string(),       // green
+            status_stale: "#f1fa8c".to_string(),      // yellow
+            status_offline: "#ff5555".to_string(),    // red
+            text_primary: "#f8f8f2".to_string(),      // foreground
+            text_secondary: "#6272a4".to_string(),    // comment
+            text_highlight: "#ffffff".to_string(),    // white
+            indicator_success: "#50fa7b".to_string(), // green
+            indicator_warning: "#f1fa8c".to_string(), // yellow
+            indicator_error: "#ff5555".to_string(),   // red
+            indicator_info: "#8be9fd".to_string(),    // cyan
+            indicator_muted: "#6272a4".to_string(),   // comment
+            severity_critical: "#ff5555".to_string(), // red
+            severity_high: "#ff79c6".to_string(),     // pink
+            severity_medium: "#f1fa8c".to_string(),   // yellow
+            severity_low: "#6272a4".to_string(),      // comment
+            help_border: "#8be9fd".to_string(),       // cyan
+            help_title: "#8be9fd".to_string(),        // cyan
             braille_mode: false,
         }
     }
@@ -217,27 +217,27 @@ impl ThemeConfig {
     pub fn gruvbox_theme() -> Self {
         Self {
             name: "gruvbox".to_string(),
-            border_unselected: "#928374".to_string(),        // gray
-            border_selected: "#83a598".to_string(),          // blue/cyan
-            header_border: "#ebdbb2".to_string(),            // fg1
-            sparkline: "#fabd2f".to_string(),               // yellow
-            status_live: "#b8bb26".to_string(),             // green
-            status_stale: "#fabd2f".to_string(),            // yellow
-            status_offline: "#fb4934".to_string(),          // red
-            text_primary: "#ebdbb2".to_string(),            // fg1
-            text_secondary: "#a89984".to_string(),           // fg4
-            text_highlight: "#fbf1c7".to_string(),          // fg0
-            indicator_success: "#b8bb26".to_string(),       // green
-            indicator_warning: "#fabd2f".to_string(),       // yellow
-            indicator_error: "#fb4934".to_string(),         // red
-            indicator_info: "#83a598".to_string(),          // blue/cyan
-            indicator_muted: "#928374".to_string(),          // gray
-            severity_critical: "#fb4934".to_string(),      // red
-            severity_high: "#fe8019".to_string(),           // orange
-            severity_medium: "#fabd2f".to_string(),         // yellow
-            severity_low: "#928374".to_string(),            // gray
-            help_border: "#83a598".to_string(),             // blue/cyan
-            help_title: "#83a598".to_string(),               // blue/cyan
+            border_unselected: "#928374".to_string(), // gray
+            border_selected: "#83a598".to_string(),   // blue/cyan
+            header_border: "#ebdbb2".to_string(),     // fg1
+            sparkline: "#fabd2f".to_string(),         // yellow
+            status_live: "#b8bb26".to_string(),       // green
+            status_stale: "#fabd2f".to_string(),      // yellow
+            status_offline: "#fb4934".to_string(),    // red
+            text_primary: "#ebdbb2".to_string(),      // fg1
+            text_secondary: "#a89984".to_string(),    // fg4
+            text_highlight: "#fbf1c7".to_string(),    // fg0
+            indicator_success: "#b8bb26".to_string(), // green
+            indicator_warning: "#fabd2f".to_string(), // yellow
+            indicator_error: "#fb4934".to_string(),   // red
+            indicator_info: "#83a598".to_string(),    // blue/cyan
+            indicator_muted: "#928374".to_string(),   // gray
+            severity_critical: "#fb4934".to_string(), // red
+            severity_high: "#fe8019".to_string(),     // orange
+            severity_medium: "#fabd2f".to_string(),   // yellow
+            severity_low: "#928374".to_string(),      // gray
+            help_border: "#83a598".to_string(),       // blue/cyan
+            help_title: "#83a598".to_string(),        // blue/cyan
             braille_mode: false,
         }
     }
@@ -454,8 +454,12 @@ pub fn save_custom_theme(name: &str, theme: &ThemeConfig) -> Result<()> {
 
     // Create config directory if it doesn't exist
     if !config_dir.exists() {
-        fs::create_dir_all(config_dir)
-            .with_context(|| format!("Failed to create config directory: {}", config_dir.display()))?;
+        fs::create_dir_all(config_dir).with_context(|| {
+            format!(
+                "Failed to create config directory: {}",
+                config_dir.display()
+            )
+        })?;
         log::info!("Created config directory: {}", config_dir.display());
     }
 
@@ -471,11 +475,13 @@ pub fn save_custom_theme(name: &str, theme: &ThemeConfig) -> Result<()> {
     // Add/update custom theme
     let mut theme_to_save = theme.clone();
     theme_to_save.name = name.to_string();
-    theme_file.custom_themes.insert(name.to_string(), theme_to_save);
+    theme_file
+        .custom_themes
+        .insert(name.to_string(), theme_to_save);
 
     // Serialize and write
-    let theme_str = toml::to_string_pretty(&theme_file)
-        .context("Failed to serialize theme file to TOML")?;
+    let theme_str =
+        toml::to_string_pretty(&theme_file).context("Failed to serialize theme file to TOML")?;
 
     fs::write(&theme_path, theme_str)
         .with_context(|| format!("Failed to write theme file: {}", theme_path.display()))?;
@@ -493,8 +499,12 @@ pub fn set_active_theme(name: &str) -> Result<()> {
 
     // Create config directory if it doesn't exist
     if !config_dir.exists() {
-        fs::create_dir_all(config_dir)
-            .with_context(|| format!("Failed to create config directory: {}", config_dir.display()))?;
+        fs::create_dir_all(config_dir).with_context(|| {
+            format!(
+                "Failed to create config directory: {}",
+                config_dir.display()
+            )
+        })?;
     }
 
     // Load existing theme file or create new one
@@ -509,13 +519,17 @@ pub fn set_active_theme(name: &str) -> Result<()> {
     theme_file.theme = Some(name.to_string());
 
     // Serialize and write
-    let theme_str = toml::to_string_pretty(&theme_file)
-        .context("Failed to serialize theme file to TOML")?;
+    let theme_str =
+        toml::to_string_pretty(&theme_file).context("Failed to serialize theme file to TOML")?;
 
     fs::write(&theme_path, theme_str)
         .with_context(|| format!("Failed to write theme file: {}", theme_path.display()))?;
 
-    log::info!("Set active theme to '{}' in: {}", name, theme_path.display());
+    log::info!(
+        "Set active theme to '{}' in: {}",
+        name,
+        theme_path.display()
+    );
     Ok(())
 }
 
@@ -653,9 +667,6 @@ mod tests {
 
         assert_eq!(loaded.theme, Some("custom".to_string()));
         assert!(loaded.custom_themes.contains_key("custom"));
-        assert_eq!(
-            loaded.custom_themes["custom"].border_selected,
-            "#ff00ff"
-        );
+        assert_eq!(loaded.custom_themes["custom"].border_selected, "#ff00ff");
     }
 }

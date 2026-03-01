@@ -1,9 +1,9 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::core::models::{RepoSnapshot, SnapshotDiff};
-use crate::tui::widgets::BrailleSparkline;
 use super::utils::resample_to_width;
 use super::App;
+use crate::core::models::{RepoSnapshot, SnapshotDiff};
+use crate::tui::widgets::BrailleSparkline;
 
 impl App {
     pub(super) fn render_diff_overlay(&mut self, frame: &mut Frame) {
@@ -44,7 +44,10 @@ impl App {
             .title_alignment(Alignment::Center)
             .border_style(Style::default().fg(self.theme.header_border_color()));
 
-        let header_text = format!("{}/{} — {} [Press Esc or 'd' to exit]", self.owner, self.repo, diff_info);
+        let header_text = format!(
+            "{}/{} — {} [Press Esc or 'd' to exit]",
+            self.owner, self.repo, diff_info
+        );
 
         let paragraph = Paragraph::new(header_text)
             .block(block)
@@ -56,7 +59,8 @@ impl App {
     /// Render the split-screen diff content
     fn render_diff_content(&self, frame: &mut Frame, area: Rect) {
         let [left_area, right_area] =
-            Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(area);
+            Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .areas(area);
 
         // Left side: Current snapshot
         self.render_diff_side(frame, left_area, "Current", self.snapshot.as_ref(), true);
@@ -134,9 +138,15 @@ impl App {
         // Format with change indicator
         let (count_text, change_style) = if let Some(d) = diff {
             if d.stars_delta > 0 {
-                (format!("{} (+{})", star_count, d.stars_delta), self.theme.text_success_color())
+                (
+                    format!("{} (+{})", star_count, d.stars_delta),
+                    self.theme.text_success_color(),
+                )
             } else if d.stars_delta < 0 {
-                (format!("{} ({})", star_count, d.stars_delta), self.theme.text_error_color())
+                (
+                    format!("{} ({})", star_count, d.stars_delta),
+                    self.theme.text_error_color(),
+                )
             } else {
                 (star_count.to_string(), self.theme.text_primary_color())
             }
@@ -149,14 +159,21 @@ impl App {
             .border_style(Style::default().fg(self.theme.border_unselected_color()));
 
         // Split area for sparkline
-        let [text_area, spark_area] = Layout::vertical([Constraint::Length(2), Constraint::Fill(1)]).areas(area.inner(ratatui::layout::Margin { horizontal: 1, vertical: 0 }));
+        let [text_area, spark_area] =
+            Layout::vertical([Constraint::Length(2), Constraint::Fill(1)]).areas(area.inner(
+                ratatui::layout::Margin {
+                    horizontal: 1,
+                    vertical: 0,
+                },
+            ));
 
-        let text = vec![
-            Line::from(vec![
-                Span::styled("Total: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(count_text, Style::default().fg(change_style).bold()),
-            ]),
-        ];
+        let text = vec![Line::from(vec![
+            Span::styled(
+                "Total: ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
+            Span::styled(count_text, Style::default().fg(change_style).bold()),
+        ])];
 
         let paragraph = Paragraph::new(text);
         frame.render_widget(paragraph, text_area);
@@ -195,9 +212,15 @@ impl App {
         // Format with change indicator
         let (count_text, change_style) = if let Some(d) = diff {
             if d.issues_delta > 0 {
-                (format!("{} (+{})", issue_count, d.issues_delta), self.theme.text_error_color())
+                (
+                    format!("{} (+{})", issue_count, d.issues_delta),
+                    self.theme.text_error_color(),
+                )
             } else if d.issues_delta < 0 {
-                (format!("{} ({})", issue_count, d.issues_delta), self.theme.text_success_color())
+                (
+                    format!("{} ({})", issue_count, d.issues_delta),
+                    self.theme.text_success_color(),
+                )
             } else {
                 (issue_count.to_string(), self.theme.text_primary_color())
             }
@@ -215,16 +238,31 @@ impl App {
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Open: ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Open: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(count_text, Style::default().fg(change_style).bold()),
             ]),
             Line::from(vec![
-                Span::styled("By label: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(label_count.to_string(), Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "By label: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    label_count.to_string(),
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Unlabelled: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(unlabelled_count.to_string(), Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Unlabelled: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    unlabelled_count.to_string(),
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
         ];
 
@@ -246,9 +284,15 @@ impl App {
         // Format with change indicator
         let (count_text, change_style) = if let Some(d) = diff {
             if d.prs_delta > 0 {
-                (format!("{} (+{})", pr_count, d.prs_delta), self.theme.text_highlight_color())
+                (
+                    format!("{} (+{})", pr_count, d.prs_delta),
+                    self.theme.text_highlight_color(),
+                )
             } else if d.prs_delta < 0 {
-                (format!("{} ({})", pr_count, d.prs_delta), self.theme.text_success_color())
+                (
+                    format!("{} ({})", pr_count, d.prs_delta),
+                    self.theme.text_success_color(),
+                )
             } else {
                 (pr_count.to_string(), self.theme.text_primary_color())
             }
@@ -266,18 +310,39 @@ impl App {
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Open: ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Open: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(count_text, Style::default().fg(change_style).bold()),
             ]),
             Line::from(vec![
-                Span::styled("Draft: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(draft_count.to_string(), Style::default().fg(self.theme.text_primary_color())),
-                Span::styled(" | Ready: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(ready_count.to_string(), Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Draft: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    draft_count.to_string(),
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
+                Span::styled(
+                    " | Ready: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    ready_count.to_string(),
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Merged (30d): ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(merged_30d.to_string(), Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Merged (30d): ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    merged_30d.to_string(),
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
         ];
 
@@ -310,7 +375,10 @@ impl App {
                 if d.has_new_security_alerts() {
                     format!(
                         " [+{} critical, +{} high, +{} medium, +{} low]",
-                        d.new_security_critical, d.new_security_high, d.new_security_medium, d.new_security_low
+                        d.new_security_critical,
+                        d.new_security_high,
+                        d.new_security_medium,
+                        d.new_security_low
                     )
                 } else {
                     String::new()
@@ -327,25 +395,58 @@ impl App {
 
             vec![
                 Line::from(vec![
-                    Span::styled("Total: ", Style::default().fg(self.theme.text_secondary_color())),
-                    Span::styled(total.to_string(), Style::default().fg(self.theme.text_primary_color()).bold()),
-                    Span::styled(new_alerts_text, Style::default().fg(new_alerts_style).bold()),
+                    Span::styled(
+                        "Total: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
+                    Span::styled(
+                        total.to_string(),
+                        Style::default().fg(self.theme.text_primary_color()).bold(),
+                    ),
+                    Span::styled(
+                        new_alerts_text,
+                        Style::default().fg(new_alerts_style).bold(),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled("Critical: ", Style::default().fg(self.theme.text_secondary_color())),
-                    Span::styled(critical.to_string(), Style::default().fg(self.theme.text_error_color())),
+                    Span::styled(
+                        "Critical: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
+                    Span::styled(
+                        critical.to_string(),
+                        Style::default().fg(self.theme.text_error_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled("High: ", Style::default().fg(self.theme.text_secondary_color())),
-                    Span::styled(high.to_string(), Style::default().fg(self.theme.text_warning_color())),
+                    Span::styled(
+                        "High: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
+                    Span::styled(
+                        high.to_string(),
+                        Style::default().fg(self.theme.text_warning_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled("Medium: ", Style::default().fg(self.theme.text_secondary_color())),
-                    Span::styled(medium.to_string(), Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        "Medium: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
+                    Span::styled(
+                        medium.to_string(),
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled("Low: ", Style::default().fg(self.theme.text_secondary_color())),
-                    Span::styled(low.to_string(), Style::default().fg(self.theme.text_secondary_color())),
+                    Span::styled(
+                        "Low: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
+                    Span::styled(
+                        low.to_string(),
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
                 ]),
             ]
         } else {
@@ -361,23 +462,29 @@ impl App {
 
     /// Render diff mode status bar
     fn render_diff_status_bar(&self, frame: &mut Frame, area: Rect) {
-        let mut spans: Vec<Span> = vec![
-            Span::styled("Diff Mode", Style::default().fg(self.theme.text_highlight_color()).bold()),
-        ];
+        let mut spans: Vec<Span> = vec![Span::styled(
+            "Diff Mode",
+            Style::default()
+                .fg(self.theme.text_highlight_color())
+                .bold(),
+        )];
 
         if let Some(ref diff) = self.snapshot_diff {
-            spans.push(Span::styled(" | ", Style::default().fg(self.theme.text_secondary_color())));
+            spans.push(Span::styled(
+                " | ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ));
 
             // Stars indicator
             if diff.stars_delta > 0 {
                 spans.push(Span::styled(
                     format!(" Stars +{} ", diff.stars_delta),
-                    Style::default().fg(self.theme.text_success_color()).bold()
+                    Style::default().fg(self.theme.text_success_color()).bold(),
                 ));
             } else if diff.stars_delta < 0 {
                 spans.push(Span::styled(
                     format!(" Stars {} ", diff.stars_delta),
-                    Style::default().fg(self.theme.text_error_color()).bold()
+                    Style::default().fg(self.theme.text_error_color()).bold(),
                 ));
             }
 
@@ -385,12 +492,12 @@ impl App {
             if diff.issues_delta > 0 {
                 spans.push(Span::styled(
                     format!(" Issues +{} ", diff.issues_delta),
-                    Style::default().fg(self.theme.text_error_color()).bold()
+                    Style::default().fg(self.theme.text_error_color()).bold(),
                 ));
             } else if diff.issues_delta < 0 {
                 spans.push(Span::styled(
                     format!(" Issues {} ", diff.issues_delta),
-                    Style::default().fg(self.theme.text_success_color()).bold()
+                    Style::default().fg(self.theme.text_success_color()).bold(),
                 ));
             }
 
@@ -398,14 +505,26 @@ impl App {
             if diff.has_new_security_alerts() {
                 spans.push(Span::styled(
                     " NEW SECURITY ALERTS ",
-                    Style::default().fg(self.theme.text_error_color()).bold().underlined()
+                    Style::default()
+                        .fg(self.theme.text_error_color())
+                        .bold()
+                        .underlined(),
                 ));
             }
 
-            spans.push(Span::styled(" | Press Esc or 'd' to exit", Style::default().fg(self.theme.text_secondary_color())));
+            spans.push(Span::styled(
+                " | Press Esc or 'd' to exit",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ));
         } else {
-            spans.push(Span::styled(" | No previous snapshot to compare", Style::default().fg(self.theme.text_secondary_color())));
-            spans.push(Span::styled(" | Press Esc or 'd' to exit", Style::default().fg(self.theme.text_secondary_color())));
+            spans.push(Span::styled(
+                " | No previous snapshot to compare",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ));
+            spans.push(Span::styled(
+                " | Press Esc or 'd' to exit",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ));
         }
 
         let status_line = Line::from(spans);

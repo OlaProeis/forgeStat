@@ -1,10 +1,7 @@
 use std::time::{Duration, Instant};
 
-use ratatui::{
-    prelude::*,
-    widgets::*,
-};
 use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use ratatui::{prelude::*, widgets::*};
 
 use crate::tui::widgets::BrailleSpinner;
 
@@ -69,8 +66,13 @@ impl FetchProgress {
             if endpoint == "Star History" {
                 if let (Some(current), Some(total)) = (self.current_page, self.total_pages) {
                     if self.is_large_repo() {
-                        return format!("Fetching {} (page {}/{} of {} stars)...", 
-                            endpoint, current, total, format_stars(self.star_count.unwrap_or(0)));
+                        return format!(
+                            "Fetching {} (page {}/{} of {} stars)...",
+                            endpoint,
+                            current,
+                            total,
+                            format_stars(self.star_count.unwrap_or(0))
+                        );
                     } else {
                         return format!("Fetching {} (page {}/{})...", endpoint, current, total);
                     }
@@ -156,8 +158,8 @@ impl PongGame {
         }
 
         // Paddle dimensions - paddle is a single character wide (█)
-        let paddle_half_height = 2.0;  // Paddle is 4 chars tall
-        let paddle_width = 0.5;          // Paddle is 1 char wide (0.5 to each side of center)
+        let paddle_half_height = 2.0; // Paddle is 4 chars tall
+        let paddle_width = 0.5; // Paddle is 1 char wide (0.5 to each side of center)
 
         // Left paddle X position (where the paddle is drawn at column 2)
         let left_paddle_x = 2.0;
@@ -168,11 +170,12 @@ impl PongGame {
         // Ball must be approaching from the right (velocity < 0) and close to paddle X
         let ball_approaching_left = self.ball_velocity.0 < 0.0;
         // Check X: ball should be very close to paddle surface (within 0.6 chars)
-        let ball_at_left_paddle = self.ball.0 >= left_paddle_x - 0.6 && self.ball.0 <= left_paddle_x + 0.6;
+        let ball_at_left_paddle =
+            self.ball.0 >= left_paddle_x - 0.6 && self.ball.0 <= left_paddle_x + 0.6;
         // Check Y: ball should be within paddle's vertical range
         let ball_in_left_paddle_y = self.ball.1 >= self.left_paddle - paddle_half_height - 0.5
             && self.ball.1 <= self.left_paddle + paddle_half_height + 0.5;
-            
+
         if ball_approaching_left && ball_at_left_paddle && ball_in_left_paddle_y {
             // Reverse ball direction and add spin
             self.ball_velocity.0 = self.ball_velocity.0.abs() * 1.02;
@@ -185,10 +188,11 @@ impl PongGame {
 
         // Ball collision with right paddle (AI)
         let ball_approaching_right = self.ball_velocity.0 > 0.0;
-        let ball_at_right_paddle = self.ball.0 >= right_paddle_x - 0.6 && self.ball.0 <= right_paddle_x + 0.6;
+        let ball_at_right_paddle =
+            self.ball.0 >= right_paddle_x - 0.6 && self.ball.0 <= right_paddle_x + 0.6;
         let ball_in_right_paddle_y = self.ball.1 >= self.right_paddle - paddle_half_height - 0.5
             && self.ball.1 <= self.right_paddle + paddle_half_height + 0.5;
-            
+
         if ball_approaching_right && ball_at_right_paddle && ball_in_right_paddle_y {
             self.ball_velocity.0 = -self.ball_velocity.0.abs() * 1.02;
             let hit_offset = (self.ball.1 - self.right_paddle) / paddle_half_height;
@@ -204,7 +208,9 @@ impl PongGame {
             // AI moves slightly slower than player for fairness
             let ai_speed = 0.6;
             self.right_paddle += diff.signum() * ai_speed;
-            self.right_paddle = self.right_paddle.clamp(paddle_half_height, self.height as f32 - paddle_half_height);
+            self.right_paddle = self
+                .right_paddle
+                .clamp(paddle_half_height, self.height as f32 - paddle_half_height);
         }
 
         // Scoring
@@ -229,10 +235,7 @@ impl PongGame {
         self.ball = (self.width as f32 / 2.0, self.height as f32 / 2.0);
         // Randomize starting direction
         let direction = if rand::random::<bool>() { 1.0 } else { -1.0 };
-        self.ball_velocity = (
-            direction * 0.6,
-            (rand::random::<f32>() - 0.5) * 0.6,
-        );
+        self.ball_velocity = (direction * 0.6, (rand::random::<f32>() - 0.5) * 0.6);
     }
 
     /// Render the game
@@ -246,7 +249,9 @@ impl PongGame {
         // Draw center line
         for y in area.y..area.y + area.height {
             if y % 2 == 0 {
-                frame.buffer_mut()[(area.x + area.width / 2, y)].set_char('│').set_fg(Color::DarkGray);
+                frame.buffer_mut()[(area.x + area.width / 2, y)]
+                    .set_char('│')
+                    .set_fg(Color::DarkGray);
             }
         }
 
@@ -256,7 +261,9 @@ impl PongGame {
         for i in 0..paddle_height {
             let y = area.y + left_paddle_y + i;
             if y < area.y + area.height {
-                frame.buffer_mut()[(area.x + 2, y)].set_char('█').set_fg(Color::Green);
+                frame.buffer_mut()[(area.x + 2, y)]
+                    .set_char('█')
+                    .set_fg(Color::Green);
             }
         }
 
@@ -265,15 +272,25 @@ impl PongGame {
         for i in 0..paddle_height {
             let y = area.y + right_paddle_y + i;
             if y < area.y + area.height {
-                frame.buffer_mut()[(area.x + area.width - 3, y)].set_char('█').set_fg(Color::Red);
+                frame.buffer_mut()[(area.x + area.width - 3, y)]
+                    .set_char('█')
+                    .set_fg(Color::Red);
             }
         }
 
         // Draw ball
-        let ball_x = (area.x as f32 + (self.ball.0 / self.width as f32) * area.width as f32).round() as u16;
-        let ball_y = (area.y as f32 + (self.ball.1 / self.height as f32) * area.height as f32).round() as u16;
-        if ball_x >= area.x && ball_x < area.x + area.width && ball_y >= area.y && ball_y < area.y + area.height {
-            frame.buffer_mut()[(ball_x, ball_y)].set_char('●').set_fg(Color::White);
+        let ball_x =
+            (area.x as f32 + (self.ball.0 / self.width as f32) * area.width as f32).round() as u16;
+        let ball_y = (area.y as f32 + (self.ball.1 / self.height as f32) * area.height as f32)
+            .round() as u16;
+        if ball_x >= area.x
+            && ball_x < area.x + area.width
+            && ball_y >= area.y
+            && ball_y < area.y + area.height
+        {
+            frame.buffer_mut()[(ball_x, ball_y)]
+                .set_char('●')
+                .set_fg(Color::White);
         }
 
         // Draw scores
@@ -282,7 +299,9 @@ impl PongGame {
         for (i, ch) in score_text.chars().enumerate() {
             let x = score_x + i as u16;
             if x >= area.x && x < area.x + area.width {
-                frame.buffer_mut()[(x, area.y)].set_char(ch).set_fg(Color::Yellow);
+                frame.buffer_mut()[(x, area.y)]
+                    .set_char(ch)
+                    .set_fg(Color::Yellow);
             }
         }
     }
@@ -310,9 +329,9 @@ pub struct LoadingScreen {
 struct BackgroundStar {
     x: u16,
     y: u16,
-    phase: f32,      // Animation phase offset (0-2π)
-    speed: f32,      // Twinkle speed
-    char: char,      // Character to display (░, ▒, ▓, or ·)
+    phase: f32, // Animation phase offset (0-2π)
+    speed: f32, // Twinkle speed
+    char: char, // Character to display (░, ▒, ▓, or ·)
 }
 
 impl BackgroundStar {
@@ -425,9 +444,12 @@ impl LoadingScreen {
         for star in &self.bg_stars {
             let brightness = star.brightness(self.animation_time);
             // Only draw if within bounds and not too dark
-            if brightness > 25 && 
-               star.x >= area.x && star.x < area.x + area.width &&
-               star.y >= area.y && star.y < area.y + area.height {
+            if brightness > 25
+                && star.x >= area.x
+                && star.x < area.x + area.width
+                && star.y >= area.y
+                && star.y < area.y + area.height
+            {
                 frame.buffer_mut()[(star.x, star.y)]
                     .set_char(star.char)
                     .set_fg(Color::Rgb(brightness, brightness, brightness));
@@ -468,9 +490,9 @@ impl LoadingScreen {
 
         // Calculate animated border glow (subtle cyan pulse)
         let glow_intensity = (self.animation_time.sin() + 1.0) / 2.0; // 0.0 to 1.0
-        let border_r = (0.0 + glow_intensity * 50.0) as u8;   // 0-50
+        let border_r = (0.0 + glow_intensity * 50.0) as u8; // 0-50
         let border_g = (150.0 + glow_intensity * 105.0) as u8; // 150-255
-        let border_b = (200.0 + glow_intensity * 55.0) as u8;  // 200-255
+        let border_b = (200.0 + glow_intensity * 55.0) as u8; // 200-255
         let border_color = Color::Rgb(border_r, border_g, border_b);
 
         // Create the main block with animated glowing border
@@ -493,7 +515,7 @@ impl LoadingScreen {
                 Constraint::Length(2), // Progress bar
                 Constraint::Length(2), // Status text
                 Constraint::Length(1), // Game hint
-                Constraint::Min(0),      // Error message (if any)
+                Constraint::Min(0),    // Error message (if any)
             ]
         } else {
             vec![
@@ -514,7 +536,11 @@ impl LoadingScreen {
 
         // Title
         let title = Paragraph::new("Loading Repository Data")
-            .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD))
+            .style(
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            )
             .alignment(Alignment::Center);
         frame.render_widget(title, chunks[0]);
 
@@ -530,7 +556,10 @@ impl LoadingScreen {
         // Warning for large repos
         if is_large_repo {
             let warning_text = if let Some(stars) = progress.star_count {
-                format!("⚠ This repo has {} stars - loading may take a while!", format_stars(stars))
+                format!(
+                    "⚠ This repo has {} stars - loading may take a while!",
+                    format_stars(stars)
+                )
             } else {
                 "⚠ Large repository - loading may take a while!".to_string()
             };
@@ -552,16 +581,27 @@ impl LoadingScreen {
         }
 
         // Progress bar - show page progress during star history, endpoint progress otherwise
-        let (progress_pct_val, progress_lbl) = if progress.current_endpoint.as_deref() == Some("Star History") {
+        let (progress_pct_val, progress_lbl) = if progress.current_endpoint.as_deref()
+            == Some("Star History")
+        {
             if let (Some(current), Some(total)) = (progress.current_page, progress.total_pages) {
                 let pct = (current as f64 / total as f64) * 100.0;
-                (pct as u16, format!("page {}/{} ({:.0}%)", current, total, pct))
+                (
+                    pct as u16,
+                    format!("page {}/{} ({:.0}%)", current, total, pct),
+                )
             } else {
                 (0_u16, "Starting...".to_string())
             }
         } else {
             let pct = progress.progress_percent() as u16;
-            (pct, format!("{}/{} endpoints ({:.0}%)", progress.completed, progress.total, pct))
+            (
+                pct,
+                format!(
+                    "{}/{} endpoints ({:.0}%)",
+                    progress.completed, progress.total, pct
+                ),
+            )
         };
         let progress_bar = Gauge::default()
             .block(Block::default())

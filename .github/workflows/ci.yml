@@ -68,7 +68,7 @@ jobs:
         run: cargo install cargo-dist
 
       - name: Run cargo-dist plan
-        run: cargo dist plan
+        run: dist plan
 
   # Check package metadata
   metadata:

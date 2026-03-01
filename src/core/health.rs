@@ -134,8 +134,7 @@ fn compute_activity_score(snapshot: &RepoSnapshot) -> u8 {
     };
 
     let avg_prs_per_week: u64 = if !velocity.prs_weekly.is_empty() {
-        velocity.prs_weekly.iter().map(|w| w.opened).sum::<u64>()
-            / velocity.prs_weekly.len() as u64
+        velocity.prs_weekly.iter().map(|w| w.opened).sum::<u64>() / velocity.prs_weekly.len() as u64
     } else {
         0
     };
@@ -329,11 +328,11 @@ fn compute_maintenance_score(snapshot: &RepoSnapshot) -> u8 {
     let release_deduction = if let Some(release) = releases.first() {
         if let Some(days_since) = release.days_since {
             match days_since {
-                0..=30 => 0,    // Recent release: no deduction
-                31..=60 => 2,   // 1-2 months
-                61..=90 => 4,   // 2-3 months
-                91..=180 => 6,  // 3-6 months
-                _ => 10,        // More than 6 months
+                0..=30 => 0,   // Recent release: no deduction
+                31..=60 => 2,  // 1-2 months
+                61..=90 => 4,  // 2-3 months
+                91..=180 => 6, // 3-6 months
+                _ => 10,       // More than 6 months
             }
         } else {
             5 // Unknown release date: moderate deduction
@@ -480,7 +479,8 @@ mod tests {
     use super::*;
     use crate::core::models::{
         CommunityHealth, Contributor, ContributorStats, Issue, IssueStats, MergedPr, PrStats,
-        Release, RepoMeta, RepoSnapshot, SecurityAlerts, StarHistory, VelocityStats, WeeklyActivity,
+        Release, RepoMeta, RepoSnapshot, SecurityAlerts, StarHistory, VelocityStats,
+        WeeklyActivity,
     };
     use chrono::{Duration, Utc};
     use std::collections::HashMap;
@@ -574,14 +574,29 @@ mod tests {
 
         // With minimal activity data, scores should be present but modest
         // Activity: gets points from recency bonus even with minimal data
-        assert!(score.activity <= 5, "Activity score should be low with no velocity data");
+        assert!(
+            score.activity <= 5,
+            "Activity score should be low with no velocity data"
+        );
         // Community: gets points from forks/watchers even without contributors
-        assert!(score.community <= 8, "Community score should be low with minimal data");
+        assert!(
+            score.community <= 8,
+            "Community score should be low with minimal data"
+        );
         // Maintenance: 25 - 10 (no releases) - resolution adjustment
-        assert!(score.maintenance <= 17, "Maintenance should be reduced for no releases");
+        assert!(
+            score.maintenance <= 17,
+            "Maintenance should be reduced for no releases"
+        );
         // Growth: gets points from stars (1000 total = 4) + velocity (10 stars/day = 9) + forks/watchers (3) = 16
-        assert!(score.growth >= 10, "Growth should have points from stars and forks");
-        assert!(score.total <= 60, "Total should be modest with minimal data");
+        assert!(
+            score.growth >= 10,
+            "Growth should have points from stars and forks"
+        );
+        assert!(
+            score.total <= 60,
+            "Total should be modest with minimal data"
+        );
     }
 
     #[test]
@@ -793,7 +808,11 @@ mod tests {
         // - Merge speed: 28 hours avg = 3 points
         // - Recent activity: has data = 3 points
         // Total: 8 + 4 + 3 + 3 = 18 (capped at 25)
-        assert!(score.activity >= 15, "Activity score should be high, got {}", score.activity);
+        assert!(
+            score.activity >= 15,
+            "Activity score should be high, got {}",
+            score.activity
+        );
         // Community: 75 contributors = 10, good distribution = 5, 2 new contributors = 3,
         //           comments/age = ~3 = 16
         assert!(
@@ -812,9 +831,17 @@ mod tests {
         // Growth: high velocity (50+ avg/day = 15), milestone (10000 stars = 5),
         //         forks/watchers (200, 500) = 3, acceleration bonus = 2
         // Total: min(15+5+3+2, 25) = 25
-        assert!(score.growth >= 20, "Growth score should be high, got {}", score.growth);
+        assert!(
+            score.growth >= 20,
+            "Growth score should be high, got {}",
+            score.growth
+        );
         // With all these good metrics, total should be >= 90 (Excellent)
-        assert!(score.total >= 90, "Total score should be >= 90 for Excellent, got {}", score.total);
+        assert!(
+            score.total >= 90,
+            "Total score should be >= 90 for Excellent, got {}",
+            score.total
+        );
         assert_eq!(score.grade, HealthGrade::Excellent);
     }
 
@@ -909,18 +936,38 @@ mod tests {
 
         // Activity: recent activity (20 opened, 0 closed issues) + (5 opened, 0 closed PRs) = 25 weekly = 8 points
         // But also has open issues/PRs, so gets some velocity score
-        assert!(score.activity <= 15, "Activity score should be low, got {}", score.activity);
+        assert!(
+            score.activity <= 15,
+            "Activity score should be low, got {}",
+            score.activity
+        );
         // Community: 1 contributor = 2 points, high concentration (100%) = 1 point,
         //          no new contributors = 0, old issue (180 days) + no comments = ~1
-        assert!(score.community <= 8, "Community score should be low, got {}", score.community);
+        assert!(
+            score.community <= 8,
+            "Community score should be low, got {}",
+            score.community
+        );
         // Maintenance: no releases = -10, critical alerts (2) = -8,
         //              bad resolution (20 opened, 0 closed, ratio 0) = 0, deduction = 7
         // Score: 25 - 10 - 8 - 7 = 0
-        assert!(score.maintenance <= 5, "Maintenance score should be very low, got {}", score.maintenance);
+        assert!(
+            score.maintenance <= 5,
+            "Maintenance score should be very low, got {}",
+            score.maintenance
+        );
         // Growth: no stars gained (0), low total (5 stars = 0), no forks/watchers = 0
-        assert!(score.growth <= 3, "Growth score should be low, got {}", score.growth);
+        assert!(
+            score.growth <= 3,
+            "Growth score should be low, got {}",
+            score.growth
+        );
         // With all these poor metrics, total should be critical
-        assert!(score.total <= 30, "Total score should be critical, got {}", score.total);
+        assert!(
+            score.total <= 30,
+            "Total score should be critical, got {}",
+            score.total
+        );
         assert_eq!(score.grade, HealthGrade::Critical);
     }
 
@@ -964,8 +1011,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&score).expect("Failed to serialize");
-        let deserialized: HealthScore =
-            serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: HealthScore = serde_json::from_str(&json).expect("Failed to deserialize");
 
         assert_eq!(score.total, deserialized.total);
         assert_eq!(score.activity, deserialized.activity);
@@ -1059,7 +1105,10 @@ mod tests {
         // (15+20+10)/3 + (5+8)/2 = 15 + 6.5 = ~22 weekly activity = score 8 for velocity
         // Plus recent activity bonus = 3
         // Total activity should be around 11
-        assert!(score >= 10 && score <= 13, "Activity score should reflect velocity");
+        assert!(
+            score >= 10 && score <= 13,
+            "Activity score should reflect velocity"
+        );
     }
 
     #[test]
@@ -1136,7 +1185,10 @@ mod tests {
         // Recent release: 0 deduction
         // Critical alert: 8 deduction
         // Max score: 25 - 8 = 17, but we also need to account for resolution score
-        assert!(score <= 17, "Critical alerts should significantly reduce score");
+        assert!(
+            score <= 17,
+            "Critical alerts should significantly reduce score"
+        );
 
         // Test with no alerts
         let clean_snapshot = RepoSnapshot {
@@ -1625,20 +1677,16 @@ mod tests {
             },
             releases: vec![],
             velocity: VelocityStats {
-                issues_weekly: vec![
-                    WeeklyActivity {
-                        week_start: now - Duration::days(7),
-                        opened: 15,
-                        closed: 10,
-                    },
-                ],
-                prs_weekly: vec![
-                    WeeklyActivity {
-                        week_start: now - Duration::days(7),
-                        opened: 5,
-                        closed: 4,
-                    },
-                ],
+                issues_weekly: vec![WeeklyActivity {
+                    week_start: now - Duration::days(7),
+                    opened: 15,
+                    closed: 10,
+                }],
+                prs_weekly: vec![WeeklyActivity {
+                    week_start: now - Duration::days(7),
+                    opened: 5,
+                    closed: 4,
+                }],
             },
             security_alerts: None,
             ci_status: Some(crate::core::models::CIStatus {
@@ -1711,20 +1759,16 @@ mod tests {
             },
             releases: vec![],
             velocity: VelocityStats {
-                issues_weekly: vec![
-                    WeeklyActivity {
-                        week_start: now - Duration::days(7),
-                        opened: 15,
-                        closed: 10,
-                    },
-                ],
-                prs_weekly: vec![
-                    WeeklyActivity {
-                        week_start: now - Duration::days(7),
-                        opened: 5,
-                        closed: 4,
-                    },
-                ],
+                issues_weekly: vec![WeeklyActivity {
+                    week_start: now - Duration::days(7),
+                    opened: 15,
+                    closed: 10,
+                }],
+                prs_weekly: vec![WeeklyActivity {
+                    week_start: now - Duration::days(7),
+                    opened: 5,
+                    closed: 4,
+                }],
             },
             security_alerts: None,
             ci_status: Some(crate::core::models::CIStatus {
@@ -1825,20 +1869,16 @@ mod tests {
             },
             releases: vec![],
             velocity: VelocityStats {
-                issues_weekly: vec![
-                    WeeklyActivity {
-                        week_start: now - Duration::days(7),
-                        opened: 50,
-                        closed: 45,
-                    },
-                ],
-                prs_weekly: vec![
-                    WeeklyActivity {
-                        week_start: now - Duration::days(7),
-                        opened: 50,
-                        closed: 45,
-                    },
-                ],
+                issues_weekly: vec![WeeklyActivity {
+                    week_start: now - Duration::days(7),
+                    opened: 50,
+                    closed: 45,
+                }],
+                prs_weekly: vec![WeeklyActivity {
+                    week_start: now - Duration::days(7),
+                    opened: 50,
+                    closed: 45,
+                }],
             },
             security_alerts: None,
             ci_status: Some(crate::core::models::CIStatus {
@@ -1907,20 +1947,16 @@ mod tests {
             },
             releases: vec![],
             velocity: VelocityStats {
-                issues_weekly: vec![
-                    WeeklyActivity {
-                        week_start: now - Duration::days(7),
-                        opened: 25,
-                        closed: 22,
-                    },
-                ],
-                prs_weekly: vec![
-                    WeeklyActivity {
-                        week_start: now - Duration::days(7),
-                        opened: 15,
-                        closed: 14,
-                    },
-                ],
+                issues_weekly: vec![WeeklyActivity {
+                    week_start: now - Duration::days(7),
+                    opened: 25,
+                    closed: 22,
+                }],
+                prs_weekly: vec![WeeklyActivity {
+                    week_start: now - Duration::days(7),
+                    opened: 15,
+                    closed: 14,
+                }],
             },
             security_alerts: Some(SecurityAlerts {
                 total_open: 0,
@@ -1952,7 +1988,10 @@ mod tests {
         // Verify all sub-scores are within valid ranges
         assert!(score.activity <= 25, "Activity should be capped at 25");
         assert!(score.community <= 25, "Community should be capped at 25");
-        assert!(score.maintenance <= 25, "Maintenance should be capped at 25");
+        assert!(
+            score.maintenance <= 25,
+            "Maintenance should be capped at 25"
+        );
         assert!(score.growth <= 25, "Growth should be capped at 25");
 
         // Total should equal sum of components

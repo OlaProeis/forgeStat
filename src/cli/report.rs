@@ -15,7 +15,10 @@ pub fn generate_report(snapshot: &RepoSnapshot) -> String {
 
     // Header
     report.push_str(&format!("# {} Health Report\n\n", repo_name));
-    report.push_str(&format!("Generated: {} UTC\n\n", snapshot.fetched_at.format("%Y-%m-%d %H:%M")));
+    report.push_str(&format!(
+        "Generated: {} UTC\n\n",
+        snapshot.fetched_at.format("%Y-%m-%d %H:%M")
+    ));
 
     // Health Score Section
     report.push_str(&format_health_section(&health));
@@ -84,7 +87,10 @@ fn format_stars_section(snapshot: &RepoSnapshot) -> String {
     let mut section = String::new();
 
     section.push_str("## ⭐ Stars\n\n");
-    section.push_str(&format!("**Total:** {}\n\n", format_number(snapshot.stars.total_count)));
+    section.push_str(&format!(
+        "**Total:** {}\n\n",
+        format_number(snapshot.stars.total_count)
+    ));
 
     // Milestone prediction
     if let Some(prediction) = predict_milestone(&snapshot.stars) {
@@ -108,8 +114,14 @@ fn format_stars_section(snapshot: &RepoSnapshot) -> String {
 
     section.push_str("| Period | New Stars |\n");
     section.push_str("|--------|-----------|\n");
-    section.push_str(&format!("| Last 30 days | +{} |\n", format_number(stars_30d)));
-    section.push_str(&format!("| Last 90 days | +{} |\n", format_number(stars_90d)));
+    section.push_str(&format!(
+        "| Last 30 days | +{} |\n",
+        format_number(stars_30d)
+    ));
+    section.push_str(&format!(
+        "| Last 90 days | +{} |\n",
+        format_number(stars_90d)
+    ));
     section.push_str("\n");
 
     section
@@ -124,7 +136,10 @@ fn format_issues_section(snapshot: &RepoSnapshot) -> String {
 
     // Oldest issue
     if let Some(oldest_days) = snapshot.oldest_issue_age_days() {
-        section.push_str(&format!("⏱️ **Oldest Issue:** {} days old\n\n", oldest_days));
+        section.push_str(&format!(
+            "⏱️ **Oldest Issue:** {} days old\n\n",
+            oldest_days
+        ));
     }
 
     // Issues by label
@@ -170,7 +185,10 @@ fn format_prs_section(snapshot: &RepoSnapshot) -> String {
     section.push_str("|--------|-------|\n");
     section.push_str(&format!("| Ready | {} |\n", prs.ready_count));
     section.push_str(&format!("| Draft | {} |\n", prs.draft_count));
-    section.push_str(&format!("| Merged (30d) | {} |\n", prs.merged_last_30d.len()));
+    section.push_str(&format!(
+        "| Merged (30d) | {} |\n",
+        prs.merged_last_30d.len()
+    ));
     section.push_str("\n");
 
     if let Some(avg_hours) = prs.avg_time_to_merge_hours {
@@ -190,7 +208,10 @@ fn format_contributors_section(snapshot: &RepoSnapshot) -> String {
     let contributors = &snapshot.contributors;
 
     section.push_str("## 👥 Contributors\n\n");
-    section.push_str(&format!("**Total Unique:** {}\n\n", format_number(contributors.total_unique)));
+    section.push_str(&format!(
+        "**Total Unique:** {}\n\n",
+        format_number(contributors.total_unique)
+    ));
 
     // New contributors
     if !contributors.new_contributors_last_30d.is_empty() {
@@ -244,13 +265,19 @@ fn format_releases_section(snapshot: &RepoSnapshot) -> String {
             .map(|d| d.to_string())
             .unwrap_or_else(|| "-".to_string());
 
-        section.push_str(&format!("| {} | {} | {} |\n", version, published, days_since));
+        section.push_str(&format!(
+            "| {} | {} | {} |\n",
+            version, published, days_since
+        ));
     }
 
     // Average release interval
     if let Some(first_release) = snapshot.releases.first() {
         if let Some(avg_interval) = first_release.avg_interval {
-            section.push_str(&format!("\n📅 **Avg Release Interval:** {:.1} days\n", avg_interval));
+            section.push_str(&format!(
+                "\n📅 **Avg Release Interval:** {:.1} days\n",
+                avg_interval
+            ));
         }
     }
 

@@ -1,8 +1,8 @@
 use ratatui::{prelude::*, widgets::*};
 
-use crate::core::cache::CachedRepoInfo;
 use super::utils::centered_rect;
 use super::App;
+use crate::core::cache::CachedRepoInfo;
 
 impl App {
     pub(super) fn toggle_fuzzy_mode(&mut self) {
@@ -19,9 +19,7 @@ impl App {
             let repos_result = std::thread::scope(|s| {
                 s.spawn(|| {
                     let rt = tokio::runtime::Runtime::new().ok()?;
-                    rt.block_on(async {
-                        crate::core::cache::Cache::scan_all_repos().await.ok()
-                    })
+                    rt.block_on(async { crate::core::cache::Cache::scan_all_repos().await.ok() })
                 })
                 .join()
                 .ok()

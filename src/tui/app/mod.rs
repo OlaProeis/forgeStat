@@ -15,17 +15,14 @@ mod zoom;
 
 pub use loading_screen::{FetchProgress, LoadingScreen};
 
-pub use watchlist::{WatchlistApp, WatchlistAction};
+pub use watchlist::{WatchlistAction, WatchlistApp};
 
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use arboard::Clipboard;
 use chrono::Utc;
-use ratatui::{
-    prelude::*,
-    widgets::*,
-};
+use ratatui::{prelude::*, widgets::*};
 
 use crate::core::cache::CachedRepoInfo;
 use crate::core::config::{AnimationConfig, LayoutConfig, StatusBarConfig, StatusBarItem};
@@ -350,7 +347,7 @@ pub struct App {
     // Panel areas for mouse click detection
     panel_areas: [Option<Rect>; 8],
     // Border areas for resize detection (vertical and horizontal borders)
-    vertical_borders: [Option<Rect>; 5],   // 1 in row1, 2 in row2, 2 in row3
+    vertical_borders: [Option<Rect>; 5], // 1 in row1, 2 in row2, 2 in row3
     horizontal_borders: [Option<Rect>; 2], // Between row1/row2 and row2/row3
     // Drag state for resizing
     drag_state: Option<DragState>,
@@ -565,7 +562,11 @@ impl App {
                     let rt = tokio::runtime::Runtime::new().ok()?;
                     rt.block_on(async {
                         let cache = crate::core::cache::Cache::new(&owner, &repo).ok()?;
-                        cache.load_previous_snapshot(&current_id).await.ok().flatten()
+                        cache
+                            .load_previous_snapshot(&current_id)
+                            .await
+                            .ok()
+                            .flatten()
                     })
                 })
                 .join()
@@ -703,7 +704,8 @@ impl App {
         let filtered_contributors = self.get_filtered_contributors();
 
         // Get the contributor at the current scroll position
-        filtered_contributors.get(self.contributors_scroll)
+        filtered_contributors
+            .get(self.contributors_scroll)
             .map(|c| c.username.clone())
     }
 
@@ -712,7 +714,8 @@ impl App {
         let filtered_releases = self.get_filtered_releases();
 
         // Get the release at the current scroll position
-        filtered_releases.get(self.releases_scroll)
+        filtered_releases
+            .get(self.releases_scroll)
             .map(|r| r.tag_name.clone())
     }
 
@@ -734,7 +737,8 @@ impl App {
 
     /// Reset layout to the current preset
     pub fn reset_layout(&mut self) {
-        self.layout_config.reset_to_preset(self.layout_config.preset);
+        self.layout_config
+            .reset_to_preset(self.layout_config.preset);
         // Save the reset layout
         if let Err(e) = self.layout_config.save() {
             log::warn!("Failed to save layout config after reset: {}", e);
@@ -804,7 +808,7 @@ impl App {
             return 0.0;
         }
 
-            if let Some((flashing_panel, start)) = self.panel_flash {
+        if let Some((flashing_panel, start)) = self.panel_flash {
             if flashing_panel == panel {
                 let elapsed = start.elapsed().as_millis() as u64;
                 let duration = self.animation_config.flash_duration_ms;
@@ -1077,18 +1081,28 @@ impl App {
         if let Some(zoom_panel) = self.zoom_panel {
             // When zoomed, scroll the zoom-specific offset
             match zoom_panel {
-                Panel::Issues => self.zoom_issues_scroll = self.zoom_issues_scroll.saturating_add(1),
-                Panel::Contributors => self.zoom_contributors_scroll = self.zoom_contributors_scroll.saturating_add(1),
-                Panel::Releases => self.zoom_releases_scroll = self.zoom_releases_scroll.saturating_add(1),
+                Panel::Issues => {
+                    self.zoom_issues_scroll = self.zoom_issues_scroll.saturating_add(1)
+                }
+                Panel::Contributors => {
+                    self.zoom_contributors_scroll = self.zoom_contributors_scroll.saturating_add(1)
+                }
+                Panel::Releases => {
+                    self.zoom_releases_scroll = self.zoom_releases_scroll.saturating_add(1)
+                }
                 Panel::Stars => self.zoom_stars_scroll = self.zoom_stars_scroll.saturating_add(1),
-                Panel::PullRequests => self.zoom_prs_scroll = self.zoom_prs_scroll.saturating_add(1),
+                Panel::PullRequests => {
+                    self.zoom_prs_scroll = self.zoom_prs_scroll.saturating_add(1)
+                }
                 _ => {}
             }
         } else {
             // Normal mode - scroll the selected panel
             match self.selected_panel {
                 Panel::Issues => self.issues_scroll = self.issues_scroll.saturating_add(1),
-                Panel::Contributors => self.contributors_scroll = self.contributors_scroll.saturating_add(1),
+                Panel::Contributors => {
+                    self.contributors_scroll = self.contributors_scroll.saturating_add(1)
+                }
                 Panel::Releases => self.releases_scroll = self.releases_scroll.saturating_add(1),
                 _ => {}
             }
@@ -1099,24 +1113,33 @@ impl App {
         if let Some(zoom_panel) = self.zoom_panel {
             // When zoomed, scroll the zoom-specific offset
             match zoom_panel {
-                Panel::Issues => self.zoom_issues_scroll = self.zoom_issues_scroll.saturating_sub(1),
-                Panel::Contributors => self.zoom_contributors_scroll = self.zoom_contributors_scroll.saturating_sub(1),
-                Panel::Releases => self.zoom_releases_scroll = self.zoom_releases_scroll.saturating_sub(1),
+                Panel::Issues => {
+                    self.zoom_issues_scroll = self.zoom_issues_scroll.saturating_sub(1)
+                }
+                Panel::Contributors => {
+                    self.zoom_contributors_scroll = self.zoom_contributors_scroll.saturating_sub(1)
+                }
+                Panel::Releases => {
+                    self.zoom_releases_scroll = self.zoom_releases_scroll.saturating_sub(1)
+                }
                 Panel::Stars => self.zoom_stars_scroll = self.zoom_stars_scroll.saturating_sub(1),
-                Panel::PullRequests => self.zoom_prs_scroll = self.zoom_prs_scroll.saturating_sub(1),
+                Panel::PullRequests => {
+                    self.zoom_prs_scroll = self.zoom_prs_scroll.saturating_sub(1)
+                }
                 _ => {}
             }
         } else {
             // Normal mode - scroll the selected panel
             match self.selected_panel {
                 Panel::Issues => self.issues_scroll = self.issues_scroll.saturating_sub(1),
-                Panel::Contributors => self.contributors_scroll = self.contributors_scroll.saturating_sub(1),
+                Panel::Contributors => {
+                    self.contributors_scroll = self.contributors_scroll.saturating_sub(1)
+                }
                 Panel::Releases => self.releases_scroll = self.releases_scroll.saturating_sub(1),
                 _ => {}
             }
         }
     }
-
 
     pub fn render(&mut self, frame: &mut Frame) {
         // When in search mode, reserve space for search modal at bottom
@@ -1213,7 +1236,8 @@ impl App {
         // Use configurable layout from layout.toml
         let [row1, row2, row3] = Layout::vertical(self.layout_config.row_heights()).areas(area);
 
-        let [stars_area, issues_area] = Layout::horizontal(self.layout_config.row1_widths()).areas(row1);
+        let [stars_area, issues_area] =
+            Layout::horizontal(self.layout_config.row1_widths()).areas(row1);
 
         let [prs_area, contrib_area, releases_area] =
             Layout::horizontal(self.layout_config.row2_widths()).areas(row2);
@@ -1325,8 +1349,18 @@ impl App {
         // Check if toast should be displayed
         if let Some(toast_msg) = self.get_toast_message() {
             let toast = Paragraph::new(Line::from(vec![
-                Span::styled("✓ ", Style::default().fg(self.theme.indicator_success_color()).bold()),
-                Span::styled(toast_msg, Style::default().fg(self.theme.text_highlight_color()).bold()),
+                Span::styled(
+                    "✓ ",
+                    Style::default()
+                        .fg(self.theme.indicator_success_color())
+                        .bold(),
+                ),
+                Span::styled(
+                    toast_msg,
+                    Style::default()
+                        .fg(self.theme.text_highlight_color())
+                        .bold(),
+                ),
             ]));
             frame.render_widget(toast, area);
             return;
@@ -1352,7 +1386,9 @@ impl App {
                             let mins = self
                                 .snapshot
                                 .as_ref()
-                                .map(|s| Utc::now().signed_duration_since(s.fetched_at).num_minutes())
+                                .map(|s| {
+                                    Utc::now().signed_duration_since(s.fetched_at).num_minutes()
+                                })
                                 .unwrap_or(0);
                             // Add spinner character for live state when animations enabled
                             let spinner = if self.animation_config.is_spinner_enabled() {
@@ -1369,7 +1405,9 @@ impl App {
                             let mins = self
                                 .snapshot
                                 .as_ref()
-                                .map(|s| Utc::now().signed_duration_since(s.fetched_at).num_minutes())
+                                .map(|s| {
+                                    Utc::now().signed_duration_since(s.fetched_at).num_minutes()
+                                })
                                 .unwrap_or(0);
                             (
                                 format!("STALE {}m", mins),
@@ -1443,7 +1481,11 @@ impl App {
                     }
                 }
                 StatusBarItem::OldestIssueAge => {
-                    if let Some(days) = self.snapshot.as_ref().and_then(|s| s.oldest_issue_age_days()) {
+                    if let Some(days) = self
+                        .snapshot
+                        .as_ref()
+                        .and_then(|s| s.oldest_issue_age_days())
+                    {
                         spans.push(Span::styled(
                             format!("Oldest: {}d", days),
                             Style::default().fg(self.theme.text_primary_color()),
@@ -1458,14 +1500,28 @@ impl App {
                 StatusBarItem::HealthScore => {
                     if let Some(ref health) = self.health_score {
                         let color = match health.grade {
-                            crate::core::health::HealthGrade::Excellent => self.theme.indicator_success_color(),
-                            crate::core::health::HealthGrade::Good => self.theme.text_highlight_color(),
-                            crate::core::health::HealthGrade::Fair => self.theme.indicator_warning_color(),
-                            crate::core::health::HealthGrade::NeedsAttention => self.theme.indicator_warning_color(),
-                            crate::core::health::HealthGrade::Critical => self.theme.indicator_error_color(),
+                            crate::core::health::HealthGrade::Excellent => {
+                                self.theme.indicator_success_color()
+                            }
+                            crate::core::health::HealthGrade::Good => {
+                                self.theme.text_highlight_color()
+                            }
+                            crate::core::health::HealthGrade::Fair => {
+                                self.theme.indicator_warning_color()
+                            }
+                            crate::core::health::HealthGrade::NeedsAttention => {
+                                self.theme.indicator_warning_color()
+                            }
+                            crate::core::health::HealthGrade::Critical => {
+                                self.theme.indicator_error_color()
+                            }
                         };
                         spans.push(Span::styled(
-                            format!("Health: {}/100 ({})", health.total, health.grade.as_letter()),
+                            format!(
+                                "Health: {}/100 ({})",
+                                health.total,
+                                health.grade.as_letter()
+                            ),
                             Style::default().fg(color).bold(),
                         ));
                     } else {
@@ -1500,7 +1556,9 @@ impl App {
             spans.push(Span::raw(" "));
             spans.push(Span::styled(
                 hint.key,
-                Style::default().fg(self.theme.text_highlight_color()).bold(),
+                Style::default()
+                    .fg(self.theme.text_highlight_color())
+                    .bold(),
             ));
             spans.push(Span::styled(
                 format!(" {}", hint.description),
@@ -1844,7 +1902,6 @@ impl App {
         self.zoom_releases_scroll = 0;
     }
 
-
     /// Cycle through label filters for Issues panel
     fn cycle_issues_label_filter(&mut self) {
         if let Some(ref snap) = self.snapshot {
@@ -1901,7 +1958,10 @@ impl App {
 
         // Apply label filter first
         let label_filtered: Vec<&Issue> = if let Some(ref label) = self.issues_label_filter {
-            all_issues.into_iter().filter(|i| i.labels.contains(label)).collect()
+            all_issues
+                .into_iter()
+                .filter(|i| i.labels.contains(label))
+                .collect()
         } else {
             all_issues
         };
@@ -1963,4 +2023,3 @@ impl App {
 }
 
 pub use event_loop::run_event_loop;
-

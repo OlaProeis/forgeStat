@@ -84,7 +84,13 @@ fn print_repo_list_for_fzf(repos: &[CachedRepoInfo]) {
             .last_viewed_at
             .map(|dt| dt.format("%Y-%m-%d %H:%M").to_string())
             .unwrap_or_else(|| "never".to_string());
-        println!("{}\t{}\t{}\t{}", repo.full_name, desc, last_viewed, repo.path.display());
+        println!(
+            "{}\t{}\t{}\t{}",
+            repo.full_name,
+            desc,
+            last_viewed,
+            repo.path.display()
+        );
     }
 }
 
@@ -333,12 +339,7 @@ async fn main() -> Result<()> {
 }
 
 /// Run compare mode with two repositories side-by-side
-async fn run_compare_mode(
-    owner1: &str,
-    repo1: &str,
-    owner2: &str,
-    repo2: &str,
-) -> Result<()> {
+async fn run_compare_mode(owner1: &str, repo1: &str, owner2: &str, repo2: &str) -> Result<()> {
     let token = config::load_token().ok();
     let client = GitHubClient::new(token.as_deref())?;
 
@@ -393,7 +394,8 @@ async fn run_compare_mode(
             &repo1_string,
             false,
             progress_tx1,
-        ).await
+        )
+        .await
     });
 
     let fetch_handle2 = tokio::spawn(async move {
@@ -404,7 +406,8 @@ async fn run_compare_mode(
             &repo2_string,
             false,
             progress_tx2,
-        ).await
+        )
+        .await
     });
 
     // Run loading screen showing first repo's progress
@@ -515,7 +518,8 @@ async fn run_compare_mode(
                         &repo1_string,
                         true, // force refresh
                         progress_tx1,
-                    ).await
+                    )
+                    .await
                 });
 
                 let fetch_handle2 = tokio::spawn(async move {
@@ -526,7 +530,8 @@ async fn run_compare_mode(
                         &repo2_string,
                         true, // force refresh
                         progress_tx2,
-                    ).await
+                    )
+                    .await
                 });
 
                 // For compare mode, we'll just show the first repo's progress
@@ -637,17 +642,19 @@ async fn run_app_loop(initial_owner: &str, initial_repo: &str) -> Result<()> {
 
         if let Some((snap, _)) = cached_snapshot {
             // Use cached snapshot directly - no loading screen needed
-            log::info!("Using cached snapshot for {}/{}", current_owner, current_repo);
+            log::info!(
+                "Using cached snapshot for {}/{}",
+                current_owner,
+                current_repo
+            );
             snapshot_result = Some(snap);
         } else {
             // Initialize terminal early for loading screen
             let mut terminal = ratatui::init();
 
             // Create loading screen
-            let mut loading_screen = LoadingScreen::new(
-                current_owner.clone(),
-                current_repo.clone(),
-            );
+            let mut loading_screen =
+                LoadingScreen::new(current_owner.clone(), current_repo.clone());
 
             // Create progress channel
             let (progress_tx, progress_rx) = tokio::sync::mpsc::channel(20);
@@ -665,7 +672,8 @@ async fn run_app_loop(initial_owner: &str, initial_repo: &str) -> Result<()> {
                     &repo_clone,
                     false,
                     progress_tx,
-                ).await
+                )
+                .await
             });
 
             // Run loading screen until fetch completes
@@ -743,10 +751,8 @@ async fn run_app_loop(initial_owner: &str, initial_repo: &str) -> Result<()> {
                     terminal.clear()?;
 
                     // Create loading screen for refresh
-                    let mut loading_screen = LoadingScreen::new(
-                        current_owner.clone(),
-                        current_repo.clone(),
-                    );
+                    let mut loading_screen =
+                        LoadingScreen::new(current_owner.clone(), current_repo.clone());
 
                     // Create progress channel
                     let (progress_tx, progress_rx) = tokio::sync::mpsc::channel(20);
@@ -764,7 +770,8 @@ async fn run_app_loop(initial_owner: &str, initial_repo: &str) -> Result<()> {
                             &repo_clone,
                             true, // force refresh
                             progress_tx,
-                        ).await
+                        )
+                        .await
                     });
 
                     // Run loading screen until fetch completes
@@ -828,7 +835,7 @@ async fn run_app_loop(initial_owner: &str, initial_repo: &str) -> Result<()> {
 
 /// Run the watchlist dashboard loop for multi-repo mode
 async fn run_watchlist_loop(repos: &[String]) -> Result<()> {
-    use forgeStat::tui::app::{WatchlistApp, WatchlistAction};
+    use forgeStat::tui::app::{WatchlistAction, WatchlistApp};
 
     let token = config::load_token().ok();
     let client = GitHubClient::new(token.as_deref())?;
@@ -861,7 +868,8 @@ async fn run_watchlist_loop(repos: &[String]) -> Result<()> {
 
                 async move {
                     let cache = Cache::new(&owner, &repo_name).ok()?;
-                    let result = snapshot::fetch_snapshot(client, &cache, &owner, &repo_name, false).await;
+                    let result =
+                        snapshot::fetch_snapshot(client, &cache, &owner, &repo_name, false).await;
                     Some((repo.clone(), result))
                 }
             })
@@ -895,7 +903,11 @@ async fn run_watchlist_loop(repos: &[String]) -> Result<()> {
 
         app.set_fetching(false);
         let fetch_duration = fetch_start.elapsed();
-        log::info!("Watchlist fetched {} repos in {:?}", repos.len(), fetch_duration);
+        log::info!(
+            "Watchlist fetched {} repos in {:?}",
+            repos.len(),
+            fetch_duration
+        );
 
         // Re-render to show the fetched data before waiting for input
         app.render(&mut terminal)?;
@@ -905,7 +917,9 @@ async fn run_watchlist_loop(repos: &[String]) -> Result<()> {
             match app.run_event_loop(&mut terminal).await {
                 Ok(WatchlistAction::Quit) => break Ok(WatchlistAction::Quit),
                 Ok(WatchlistAction::Refresh) => break Ok(WatchlistAction::Refresh),
-                Ok(WatchlistAction::SelectRepo(owner, repo)) => break Ok(WatchlistAction::SelectRepo(owner, repo)),
+                Ok(WatchlistAction::SelectRepo(owner, repo)) => {
+                    break Ok(WatchlistAction::SelectRepo(owner, repo))
+                }
                 Err(e) => break Err(e),
             }
         };

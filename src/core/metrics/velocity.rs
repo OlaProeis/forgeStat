@@ -66,7 +66,9 @@ impl<'a> VelocityMetrics<'a> {
         for (i, &ws) in week_starts.iter().enumerate() {
             let start_date = ws.format("%Y-%m-%d");
             let end_date = if i + 1 < week_starts.len() {
-                (week_starts[i + 1] - Duration::days(1)).format("%Y-%m-%d").to_string()
+                (week_starts[i + 1] - Duration::days(1))
+                    .format("%Y-%m-%d")
+                    .to_string()
             } else {
                 now.format("%Y-%m-%d").to_string()
             };
@@ -115,7 +117,11 @@ impl<'a> VelocityMetrics<'a> {
         }
 
         if any_error {
-            log::warn!("Some search queries failed for {}/{} issue velocity — partial data", owner, repo);
+            log::warn!(
+                "Some search queries failed for {}/{} issue velocity — partial data",
+                owner,
+                repo
+            );
         }
 
         let total_opened: u64 = weekly.iter().map(|w| w.opened).sum();
@@ -123,7 +129,10 @@ impl<'a> VelocityMetrics<'a> {
 
         log::info!(
             "Issue velocity for {}/{}: search-based, total opened={}, closed={}",
-            owner, repo, total_opened, total_closed
+            owner,
+            repo,
+            total_opened,
+            total_closed
         );
 
         Ok(weekly)
@@ -152,7 +161,10 @@ impl<'a> VelocityMetrics<'a> {
                 .send()
                 .await
                 .with_context(|| {
-                    format!("Failed to fetch open PRs page {} for velocity: {}/{}", page, owner, repo)
+                    format!(
+                        "Failed to fetch open PRs page {} for velocity: {}/{}",
+                        page, owner, repo
+                    )
                 })?;
 
             let prs: Vec<_> = prs_page.items;
@@ -180,14 +192,19 @@ impl<'a> VelocityMetrics<'a> {
                 .send()
                 .await
                 .with_context(|| {
-                    format!("Failed to fetch closed PRs page {} for velocity: {}/{}", page, owner, repo)
+                    format!(
+                        "Failed to fetch closed PRs page {} for velocity: {}/{}",
+                        page, owner, repo
+                    )
                 })?;
 
             let prs: Vec<_> = prs_page.items;
             let fetched = prs.len();
             all_closed_prs.extend(prs);
 
-            if all_closed_prs.len() >= VELOCITY_MAX_CLOSED_PRS || fetched < VELOCITY_PER_PAGE as usize {
+            if all_closed_prs.len() >= VELOCITY_MAX_CLOSED_PRS
+                || fetched < VELOCITY_PER_PAGE as usize
+            {
                 break;
             }
             page += 1;

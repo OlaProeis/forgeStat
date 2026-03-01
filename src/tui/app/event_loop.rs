@@ -92,13 +92,20 @@ pub fn run_event_loop(terminal: &mut DefaultTerminal, app: &mut App) -> Result<A
                                 log::info!("Command palette Enter pressed. Input: {:?}, Selected: {}, Was showing subcommands: {}", 
                                     app.command_input, app.command_selected_suggestion, was_showing_subcommands);
                                 let result = app.execute_command();
-                                log::info!("Execute result: {:?}, Now showing subcommands: {}", 
-                                    result, app.is_showing_subcommand_options());
+                                log::info!(
+                                    "Execute result: {:?}, Now showing subcommands: {}",
+                                    result,
+                                    app.is_showing_subcommand_options()
+                                );
                                 match result {
                                     Ok(Some(action)) => break Ok(action),
                                     Ok(None) => {
-                                        let entered_subcommand_mode = !was_showing_subcommands && app.is_showing_subcommand_options();
-                                        log::info!("Should exit palette: {}", !entered_subcommand_mode);
+                                        let entered_subcommand_mode = !was_showing_subcommands
+                                            && app.is_showing_subcommand_options();
+                                        log::info!(
+                                            "Should exit palette: {}",
+                                            !entered_subcommand_mode
+                                        );
                                         if !entered_subcommand_mode {
                                             app.exit_command_palette();
                                         }
@@ -153,17 +160,15 @@ pub fn run_event_loop(terminal: &mut DefaultTerminal, app: &mut App) -> Result<A
                                 app.exit_token_input();
                                 continue;
                             }
-                            KeyCode::Enter => {
-                                match app.save_token() {
-                                    Ok(Some(action)) => break Ok(action),
-                                    Ok(None) => continue,
-                                    Err(e) => {
-                                        app.show_toast(format!("Error: {}", e));
-                                        app.exit_token_input();
-                                        continue;
-                                    }
+                            KeyCode::Enter => match app.save_token() {
+                                Ok(Some(action)) => break Ok(action),
+                                Ok(None) => continue,
+                                Err(e) => {
+                                    app.show_toast(format!("Error: {}", e));
+                                    app.exit_token_input();
+                                    continue;
                                 }
-                            }
+                            },
                             KeyCode::Char(c) => {
                                 app.add_token_char(c);
                                 continue;
@@ -295,30 +300,26 @@ pub fn run_event_loop(terminal: &mut DefaultTerminal, app: &mut App) -> Result<A
                         KeyCode::Left => app.prev_panel(),
                         KeyCode::Down => app.scroll_down(),
                         KeyCode::Up => app.scroll_up(),
-                        KeyCode::Char('+') | KeyCode::Char(']') => {
-                            match app.selected_panel {
-                                Panel::Stars => app.cycle_star_timeframe_forward(),
-                                Panel::Velocity => app.cycle_velocity_timeframe_forward(),
-                                Panel::Contributors => app.cycle_contributors_limit_forward(),
-                                Panel::Releases => app.cycle_releases_limit_forward(),
-                                Panel::Issues => app.cycle_issues_per_page_forward(),
-                                Panel::PullRequests => app.cycle_prs_per_page_forward(),
-                                Panel::Security => {}
-                                Panel::CI => {}
-                            }
-                        }
-                        KeyCode::Char('-') | KeyCode::Char('[') => {
-                            match app.selected_panel {
-                                Panel::Stars => app.cycle_star_timeframe_backward(),
-                                Panel::Velocity => app.cycle_velocity_timeframe_backward(),
-                                Panel::Contributors => app.cycle_contributors_limit_backward(),
-                                Panel::Releases => app.cycle_releases_limit_backward(),
-                                Panel::Issues => app.cycle_issues_per_page_backward(),
-                                Panel::PullRequests => app.cycle_prs_per_page_backward(),
-                                Panel::Security => {}
-                                Panel::CI => {}
-                            }
-                        }
+                        KeyCode::Char('+') | KeyCode::Char(']') => match app.selected_panel {
+                            Panel::Stars => app.cycle_star_timeframe_forward(),
+                            Panel::Velocity => app.cycle_velocity_timeframe_forward(),
+                            Panel::Contributors => app.cycle_contributors_limit_forward(),
+                            Panel::Releases => app.cycle_releases_limit_forward(),
+                            Panel::Issues => app.cycle_issues_per_page_forward(),
+                            Panel::PullRequests => app.cycle_prs_per_page_forward(),
+                            Panel::Security => {}
+                            Panel::CI => {}
+                        },
+                        KeyCode::Char('-') | KeyCode::Char('[') => match app.selected_panel {
+                            Panel::Stars => app.cycle_star_timeframe_backward(),
+                            Panel::Velocity => app.cycle_velocity_timeframe_backward(),
+                            Panel::Contributors => app.cycle_contributors_limit_backward(),
+                            Panel::Releases => app.cycle_releases_limit_backward(),
+                            Panel::Issues => app.cycle_issues_per_page_backward(),
+                            Panel::PullRequests => app.cycle_prs_per_page_backward(),
+                            Panel::Security => {}
+                            Panel::CI => {}
+                        },
                         KeyCode::Char('=') => {
                             app.reset_layout();
                         }
@@ -369,36 +370,48 @@ pub fn run_event_loop(terminal: &mut DefaultTerminal, app: &mut App) -> Result<A
                         _ => {}
                     }
                 }
-                Event::Mouse(mouse) => {
-                    match mouse.kind {
-                        MouseEventKind::Down(_) => {
-                            if app.is_zoomed() {
-                                app.exit_zoom();
+                Event::Mouse(mouse) => match mouse.kind {
+                    MouseEventKind::Down(_) => {
+                        if app.is_zoomed() {
+                            app.exit_zoom();
+                        } else {
+                            if let Some(border_idx) =
+                                app.get_vertical_border_at(mouse.column, mouse.row)
+                            {
+                                app.start_border_drag(
+                                    BorderType::Vertical,
+                                    border_idx,
+                                    mouse.column,
+                                    mouse.row,
+                                );
+                            } else if let Some(border_idx) =
+                                app.get_horizontal_border_at(mouse.column, mouse.row)
+                            {
+                                app.start_border_drag(
+                                    BorderType::Horizontal,
+                                    border_idx,
+                                    mouse.column,
+                                    mouse.row,
+                                );
                             } else {
-                                if let Some(border_idx) = app.get_vertical_border_at(mouse.column, mouse.row) {
-                                    app.start_border_drag(BorderType::Vertical, border_idx, mouse.column, mouse.row);
-                                } else if let Some(border_idx) = app.get_horizontal_border_at(mouse.column, mouse.row) {
-                                    app.start_border_drag(BorderType::Horizontal, border_idx, mouse.column, mouse.row);
-                                } else {
-                                    app.handle_mouse_click(mouse.column, mouse.row);
-                                }
+                                app.handle_mouse_click(mouse.column, mouse.row);
                             }
                         }
-                        MouseEventKind::Drag(_) => {
-                            app.handle_drag(mouse.column, mouse.row);
-                        }
-                        MouseEventKind::Up(_) => {
-                            app.end_drag();
-                        }
-                        MouseEventKind::ScrollDown => {
-                            app.scroll_down();
-                        }
-                        MouseEventKind::ScrollUp => {
-                            app.scroll_up();
-                        }
-                        _ => {}
                     }
-                }
+                    MouseEventKind::Drag(_) => {
+                        app.handle_drag(mouse.column, mouse.row);
+                    }
+                    MouseEventKind::Up(_) => {
+                        app.end_drag();
+                    }
+                    MouseEventKind::ScrollDown => {
+                        app.scroll_down();
+                    }
+                    MouseEventKind::ScrollUp => {
+                        app.scroll_up();
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
         }

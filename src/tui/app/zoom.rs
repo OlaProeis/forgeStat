@@ -4,7 +4,9 @@ use crate::core::metrics::stars::predict_milestone;
 use crate::core::models::{Contributor, Issue, MergedPr, Release};
 use crate::tui::widgets::BrailleSparkline;
 
-use super::utils::{centered_rect, format_count, format_age, truncate, trim_leading_zeros, resample_to_width};
+use super::utils::{
+    centered_rect, format_age, format_count, resample_to_width, trim_leading_zeros, truncate,
+};
 use super::{App, Panel};
 
 impl App {
@@ -36,7 +38,10 @@ impl App {
         };
 
         let block = Block::bordered()
-            .title(format!(" ★ Stars — {} (Zoom) — Press Enter/Esc to close ", format_count(snap.stars.total_count)))
+            .title(format!(
+                " ★ Stars — {} (Zoom) — Press Enter/Esc to close ",
+                format_count(snap.stars.total_count)
+            ))
             .title_alignment(Alignment::Center)
             .border_style(Style::default().fg(self.theme.help_border_color()));
 
@@ -59,14 +64,38 @@ impl App {
 
         // Build info lines with health score if available
         let mut info_lines: Vec<Line> = vec![Line::from(vec![
-            Span::styled("Total: ", Style::default().fg(self.theme.text_secondary_color())),
-            Span::styled(format_count(snap.stars.total_count), Style::default().fg(self.theme.text_primary_color()).bold()),
-            Span::styled(" | 30d: ", Style::default().fg(self.theme.text_secondary_color())),
-            Span::styled(format_count(total_30d), Style::default().fg(self.theme.sparkline_color())),
-            Span::styled(" | 90d: ", Style::default().fg(self.theme.text_secondary_color())),
-            Span::styled(format_count(total_90d), Style::default().fg(self.theme.sparkline_color())),
-            Span::styled(" | 1y: ", Style::default().fg(self.theme.text_secondary_color())),
-            Span::styled(format_count(total_365d), Style::default().fg(self.theme.sparkline_color())),
+            Span::styled(
+                "Total: ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
+            Span::styled(
+                format_count(snap.stars.total_count),
+                Style::default().fg(self.theme.text_primary_color()).bold(),
+            ),
+            Span::styled(
+                " | 30d: ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
+            Span::styled(
+                format_count(total_30d),
+                Style::default().fg(self.theme.sparkline_color()),
+            ),
+            Span::styled(
+                " | 90d: ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
+            Span::styled(
+                format_count(total_90d),
+                Style::default().fg(self.theme.sparkline_color()),
+            ),
+            Span::styled(
+                " | 1y: ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
+            Span::styled(
+                format_count(total_365d),
+                Style::default().fg(self.theme.sparkline_color()),
+            ),
         ])];
 
         // Add health score line if available
@@ -75,13 +104,23 @@ impl App {
                 crate::core::health::HealthGrade::Excellent => self.theme.indicator_success_color(),
                 crate::core::health::HealthGrade::Good => self.theme.text_highlight_color(),
                 crate::core::health::HealthGrade::Fair => self.theme.indicator_warning_color(),
-                crate::core::health::HealthGrade::NeedsAttention => self.theme.indicator_warning_color(),
+                crate::core::health::HealthGrade::NeedsAttention => {
+                    self.theme.indicator_warning_color()
+                }
                 crate::core::health::HealthGrade::Critical => self.theme.indicator_error_color(),
             };
             info_lines.push(Line::from(vec![
-                Span::styled("Health: ", Style::default().fg(self.theme.text_secondary_color())),
                 Span::styled(
-                    format!("{}/100 ({} - {})", health.total, health.grade.as_letter(), health.grade.as_label()),
+                    "Health: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!(
+                        "{}/100 ({} - {})",
+                        health.total,
+                        health.grade.as_letter(),
+                        health.grade.as_label()
+                    ),
                     Style::default().fg(health_color).bold(),
                 ),
             ]));
@@ -98,15 +137,23 @@ impl App {
             let rate_str = format!("{:.1}/day", prediction.daily_rate);
 
             info_lines.push(Line::from(vec![
-                Span::styled("Next milestone: ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Next milestone: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     format!("{}★ in {} ({})", milestone_str, days_str, rate_str),
-                    Style::default().fg(self.theme.indicator_success_color()).bold(),
+                    Style::default()
+                        .fg(self.theme.indicator_success_color())
+                        .bold(),
                 ),
             ]));
         } else {
             info_lines.push(Line::from(vec![
-                Span::styled("Next milestone: ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Next milestone: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(
                     "Growth stalled".to_string(),
                     Style::default().fg(self.theme.indicator_warning_color()),
@@ -117,43 +164,53 @@ impl App {
         frame.render_widget(Paragraph::new(info_lines), info_area);
 
         // Helper to render a sparkline section
-        let render_sparkline_section = |frame: &mut Frame, area: Rect, title: &str, data: &[u32], trim_zeros: bool| {
-            let [label_area, spark_area] = Layout::vertical([
-                Constraint::Length(1),
-                Constraint::Fill(1),
-            ])
-            .areas(area);
+        let render_sparkline_section =
+            |frame: &mut Frame, area: Rect, title: &str, data: &[u32], trim_zeros: bool| {
+                let [label_area, spark_area] =
+                    Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(area);
 
-            let label = Paragraph::new(title)
-                .style(Style::default().fg(self.theme.text_secondary_color()));
-            frame.render_widget(label, label_area);
+                let label = Paragraph::new(title)
+                    .style(Style::default().fg(self.theme.text_secondary_color()));
+                frame.render_widget(label, label_area);
 
-            let data_u64: Vec<u64> = data.iter().map(|&v| v as u64).collect();
-            let trimmed = if trim_zeros {
-                trim_leading_zeros(&data_u64)
-            } else {
-                data_u64
+                let data_u64: Vec<u64> = data.iter().map(|&v| v as u64).collect();
+                let trimmed = if trim_zeros {
+                    trim_leading_zeros(&data_u64)
+                } else {
+                    data_u64
+                };
+
+                if !trimmed.is_empty() {
+                    let width = spark_area.width as usize;
+                    let resampled = resample_to_width(&trimmed, width.max(10));
+
+                    if self.theme.braille_mode {
+                        let braille = BrailleSparkline::new(&resampled)
+                            .style(Style::default().fg(self.theme.sparkline_color()));
+                        frame.render_widget(braille, spark_area);
+                    } else {
+                        let sparkline = Sparkline::default()
+                            .data(&resampled)
+                            .style(Style::default().fg(self.theme.sparkline_color()));
+                        frame.render_widget(sparkline, spark_area);
+                    }
+                }
             };
 
-            if !trimmed.is_empty() {
-                let width = spark_area.width as usize;
-                let resampled = resample_to_width(&trimmed, width.max(10));
-
-                if self.theme.braille_mode {
-                    let braille = BrailleSparkline::new(&resampled)
-                        .style(Style::default().fg(self.theme.sparkline_color()));
-                    frame.render_widget(braille, spark_area);
-                } else {
-                    let sparkline = Sparkline::default()
-                        .data(&resampled)
-                        .style(Style::default().fg(self.theme.sparkline_color()));
-                    frame.render_widget(sparkline, spark_area);
-                }
-            }
-        };
-
-        render_sparkline_section(frame, chart_30d_area, "30-day trend (daily)", &snap.stars.sparkline_30d, true);
-        render_sparkline_section(frame, chart_90d_area, "90-day trend (weekly)", &snap.stars.sparkline_90d, true);
+        render_sparkline_section(
+            frame,
+            chart_30d_area,
+            "30-day trend (daily)",
+            &snap.stars.sparkline_30d,
+            true,
+        );
+        render_sparkline_section(
+            frame,
+            chart_90d_area,
+            "90-day trend (weekly)",
+            &snap.stars.sparkline_90d,
+            true,
+        );
 
         // For 1-year view: show appropriate label based on data granularity
         let bucket_count = snap.stars.sparkline_365d.len().max(1);
@@ -162,7 +219,13 @@ impl App {
         } else {
             "1-year trend (monthly)".to_string()
         };
-        render_sparkline_section(frame, chart_365d_area, &label_365d, &snap.stars.sparkline_365d, false);
+        render_sparkline_section(
+            frame,
+            chart_365d_area,
+            &label_365d,
+            &snap.stars.sparkline_365d,
+            false,
+        );
     }
 
     /// Zoomed Issues panel with full table (number, title, author, labels, age, comments)
@@ -184,12 +247,19 @@ impl App {
         // Build title with count indicator if filtering is active, sort indicator, and truncation warning
         let has_filter = !self.search_query.is_empty() || self.issues_label_filter.is_some();
         let sort_label = self.issues_sort.label();
-        let truncated = snap.issues.truncated || (snap.repo.open_issues_count > snap.issues.total_open);
+        let truncated =
+            snap.issues.truncated || (snap.repo.open_issues_count > snap.issues.total_open);
         let trunc_indicator = if truncated { "+" } else { "" };
         let title = if has_filter {
-            format!(" Issues — Showing {} of {}{} (sorted by: {}) — Press Enter/Esc to close ", filtered_count, total_count, trunc_indicator, sort_label)
+            format!(
+                " Issues — Showing {} of {}{} (sorted by: {}) — Press Enter/Esc to close ",
+                filtered_count, total_count, trunc_indicator, sort_label
+            )
         } else {
-            format!(" Issues — {}{} open (sorted by: {}) — Press Enter/Esc to close ", total_count, trunc_indicator, sort_label)
+            format!(
+                " Issues — {}{} open (sorted by: {}) — Press Enter/Esc to close ",
+                total_count, trunc_indicator, sort_label
+            )
         };
 
         let block = Block::bordered()
@@ -216,7 +286,8 @@ impl App {
                 sorted_issues.sort_by(|a, b| a.created_at.cmp(&b.created_at));
             }
             super::IssuesSort::Comments => {
-                sorted_issues.sort_by(|a, b| b.comments_count.cmp(&a.comments_count)); // Descending
+                sorted_issues.sort_by(|a, b| b.comments_count.cmp(&a.comments_count));
+                // Descending
             }
         }
 
@@ -303,11 +374,8 @@ impl App {
         let pr = &snap.pull_requests;
 
         // Split into summary and merged PRs list
-        let [summary_area, merged_area] = Layout::vertical([
-            Constraint::Length(8),
-            Constraint::Fill(1),
-        ])
-        .areas(inner);
+        let [summary_area, merged_area] =
+            Layout::vertical([Constraint::Length(8), Constraint::Fill(1)]).areas(inner);
 
         // Summary section
         let merge_time = pr
@@ -317,25 +385,55 @@ impl App {
 
         let summary_text = vec![
             Line::from(vec![
-                Span::styled("Open:    ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("{}", pr.open_count), Style::default().fg(self.theme.indicator_success_color())),
+                Span::styled(
+                    "Open:    ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("{}", pr.open_count),
+                    Style::default().fg(self.theme.indicator_success_color()),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Draft:   ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("{}", pr.draft_count), Style::default().fg(self.theme.indicator_warning_color())),
+                Span::styled(
+                    "Draft:   ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("{}", pr.draft_count),
+                    Style::default().fg(self.theme.indicator_warning_color()),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Ready:   ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("{}", pr.ready_count), Style::default().fg(self.theme.indicator_info_color())),
+                Span::styled(
+                    "Ready:   ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("{}", pr.ready_count),
+                    Style::default().fg(self.theme.indicator_info_color()),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Merged:  ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("{} (30d)", pr.merged_last_30d.len()), Style::default().fg(self.theme.indicator_error_color())),
+                Span::styled(
+                    "Merged:  ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("{} (30d)", pr.merged_last_30d.len()),
+                    Style::default().fg(self.theme.indicator_error_color()),
+                ),
             ]),
             Line::from(""),
             Line::from(vec![
-                Span::styled("Avg merge time: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(merge_time, Style::default().fg(self.theme.text_primary_color()).bold()),
+                Span::styled(
+                    "Avg merge time: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    merge_time,
+                    Style::default().fg(self.theme.text_primary_color()).bold(),
+                ),
             ]),
         ];
         frame.render_widget(Paragraph::new(summary_text), summary_area);
@@ -349,7 +447,8 @@ impl App {
             let available_height = merged_area.height.saturating_sub(2);
             let visible_count = available_height as usize;
 
-            let visible_prs: Vec<&MergedPr> = pr.merged_last_30d
+            let visible_prs: Vec<&MergedPr> = pr
+                .merged_last_30d
                 .iter()
                 .skip(self.zoom_prs_scroll)
                 .take(visible_count.max(3))
@@ -411,9 +510,15 @@ impl App {
         // Build title with count indicator if filtering is active
         let has_filter = !self.search_query.is_empty();
         let title = if has_filter {
-            format!(" Contributors — Showing {} of {} (Zoom) — Press Enter/Esc to close ", filtered_count, total_count)
+            format!(
+                " Contributors — Showing {} of {} (Zoom) — Press Enter/Esc to close ",
+                filtered_count, total_count
+            )
         } else {
-            format!(" Contributors — {} (Zoom) — Press Enter/Esc to close ", total_count)
+            format!(
+                " Contributors — {} (Zoom) — Press Enter/Esc to close ",
+                total_count
+            )
         };
 
         let block = Block::bordered()
@@ -427,11 +532,8 @@ impl App {
         let contrib = &snap.contributors;
 
         // Split into summary and list
-        let [summary_area, list_area] = Layout::vertical([
-            Constraint::Length(3),
-            Constraint::Fill(1),
-        ])
-        .areas(inner);
+        let [summary_area, list_area] =
+            Layout::vertical([Constraint::Length(3), Constraint::Fill(1)]).areas(inner);
 
         // Summary
         let new_contrib_text = if contrib.new_contributors_last_30d.is_empty() || has_filter {
@@ -444,14 +546,24 @@ impl App {
             format!("{} new (30d)", contrib.new_contributors_last_30d.len())
         };
 
-        let summary_text = vec![
-            Line::from(vec![
-                Span::styled("Total unique: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("{}", contrib.total_unique), Style::default().fg(self.theme.text_primary_color()).bold()),
-                Span::styled(" | ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(new_contrib_text, Style::default().fg(self.theme.indicator_success_color())),
-            ]),
-        ];
+        let summary_text = vec![Line::from(vec![
+            Span::styled(
+                "Total unique: ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
+            Span::styled(
+                format!("{}", contrib.total_unique),
+                Style::default().fg(self.theme.text_primary_color()).bold(),
+            ),
+            Span::styled(
+                " | ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
+            Span::styled(
+                new_contrib_text,
+                Style::default().fg(self.theme.indicator_success_color()),
+            ),
+        ])];
         frame.render_widget(Paragraph::new(summary_text), summary_area);
 
         // Show message if no matches
@@ -527,9 +639,15 @@ impl App {
         // Build title with count indicator if filtering is active
         let has_filter = !self.search_query.is_empty() || self.releases_prerelease_filter.is_some();
         let title = if has_filter {
-            format!(" Releases — Showing {} of {} (Zoom) — Press Enter/Esc to close ", filtered_count, total_count)
+            format!(
+                " Releases — Showing {} of {} (Zoom) — Press Enter/Esc to close ",
+                filtered_count, total_count
+            )
         } else {
-            format!(" Releases — {} total (Zoom) — Press Enter/Esc to close ", total_count)
+            format!(
+                " Releases — {} total (Zoom) — Press Enter/Esc to close ",
+                total_count
+            )
         };
 
         let block = Block::bordered()
@@ -577,7 +695,10 @@ impl App {
             .into_iter()
             .map(|r| {
                 let name = r.name.as_deref().unwrap_or("—");
-                let age = r.days_since.map(|d| format!("{}d ago", d)).unwrap_or_else(|| "—".to_string());
+                let age = r
+                    .days_since
+                    .map(|d| format!("{}d ago", d))
+                    .unwrap_or_else(|| "—".to_string());
                 let status = if r.prerelease {
                     "pre-release"
                 } else if r.draft {
@@ -627,22 +748,37 @@ impl App {
         let vel = &snap.velocity;
 
         // Split into issues and PRs sections
-        let [issues_area, prs_area] = Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)])
-            .areas(inner);
+        let [issues_area, prs_area] =
+            Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(inner);
 
         // Issues section
         let mut issues_lines = vec![
-            Line::from(Span::styled("Issues (opened/closed)", Style::default().fg(self.theme.text_primary_color()).bold())),
+            Line::from(Span::styled(
+                "Issues (opened/closed)",
+                Style::default().fg(self.theme.text_primary_color()).bold(),
+            )),
             Line::from(""),
         ];
 
         for week in vel.issues_weekly.iter().rev() {
             let week_label = week.week_start.format("%Y-%m-%d").to_string();
             issues_lines.push(Line::from(vec![
-                Span::styled(format!("{} ", week_label), Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("+{}", week.opened), Style::default().fg(self.theme.indicator_success_color())),
-                Span::styled(" / ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("-{}", week.closed), Style::default().fg(self.theme.indicator_error_color())),
+                Span::styled(
+                    format!("{} ", week_label),
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("+{}", week.opened),
+                    Style::default().fg(self.theme.indicator_success_color()),
+                ),
+                Span::styled(
+                    " / ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("-{}", week.closed),
+                    Style::default().fg(self.theme.indicator_error_color()),
+                ),
             ]));
         }
 
@@ -650,17 +786,32 @@ impl App {
 
         // PRs section
         let mut prs_lines = vec![
-            Line::from(Span::styled("PRs (opened/merged)", Style::default().fg(self.theme.text_primary_color()).bold())),
+            Line::from(Span::styled(
+                "PRs (opened/merged)",
+                Style::default().fg(self.theme.text_primary_color()).bold(),
+            )),
             Line::from(""),
         ];
 
         for week in vel.prs_weekly.iter().rev() {
             let week_label = week.week_start.format("%Y-%m-%d").to_string();
             prs_lines.push(Line::from(vec![
-                Span::styled(format!("{} ", week_label), Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("+{}", week.opened), Style::default().fg(self.theme.indicator_success_color())),
-                Span::styled(" / ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("-{}", week.closed), Style::default().fg(self.theme.indicator_error_color())),
+                Span::styled(
+                    format!("{} ", week_label),
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("+{}", week.opened),
+                    Style::default().fg(self.theme.indicator_success_color()),
+                ),
+                Span::styled(
+                    " / ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("-{}", week.closed),
+                    Style::default().fg(self.theme.indicator_error_color()),
+                ),
             ]));
         }
 
@@ -687,48 +838,71 @@ impl App {
         frame.render_widget(block, area);
 
         // Split into security alerts and community health sections
-        let [security_area, community_area] = Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)])
-            .areas(inner);
+        let [security_area, community_area] =
+            Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(inner);
 
         // Security alerts section
         if let Some(ref sec) = snap.security_alerts {
             let security_lines = vec![
                 Line::from(vec![
-                    Span::styled("Total Open: ", Style::default().fg(self.theme.text_secondary_color())),
+                    Span::styled(
+                        "Total Open: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
                     Span::styled(
                         format!("{}", sec.total_open),
                         if sec.total_open > 0 {
-                            Style::default().fg(self.theme.severity_critical_color()).bold()
+                            Style::default()
+                                .fg(self.theme.severity_critical_color())
+                                .bold()
                         } else {
                             Style::default().fg(self.theme.indicator_success_color())
                         },
                     ),
                 ]),
                 Line::from(""),
-                Line::from(Span::styled("Severity Breakdown:", Style::default().fg(self.theme.text_primary_color()).bold())),
+                Line::from(Span::styled(
+                    "Severity Breakdown:",
+                    Style::default().fg(self.theme.text_primary_color()).bold(),
+                )),
                 Line::from(vec![
-                    Span::styled("  Critical: ", Style::default().fg(self.theme.text_secondary_color())),
+                    Span::styled(
+                        "  Critical: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
                     Span::styled(
                         format!("{}", sec.critical_count),
-                        self.severity_style(sec.critical_count, self.theme.severity_critical_color()),
+                        self.severity_style(
+                            sec.critical_count,
+                            self.theme.severity_critical_color(),
+                        ),
                     ),
                 ]),
                 Line::from(vec![
-                    Span::styled("  High:     ", Style::default().fg(self.theme.text_secondary_color())),
+                    Span::styled(
+                        "  High:     ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
                     Span::styled(
                         format!("{}", sec.high_count),
                         self.severity_style(sec.high_count, self.theme.severity_high_color()),
                     ),
                 ]),
                 Line::from(vec![
-                    Span::styled("  Medium:   ", Style::default().fg(self.theme.text_secondary_color())),
+                    Span::styled(
+                        "  Medium:   ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
                     Span::styled(
                         format!("{}", sec.medium_count),
                         self.severity_style(sec.medium_count, self.theme.severity_medium_color()),
                     ),
                 ]),
                 Line::from(vec![
-                    Span::styled("  Low:      ", Style::default().fg(self.theme.text_secondary_color())),
+                    Span::styled(
+                        "  Low:      ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
                     Span::styled(
                         format!("{}", sec.low_count),
                         self.severity_style(sec.low_count, self.theme.severity_low_color()),
@@ -737,74 +911,158 @@ impl App {
             ];
             frame.render_widget(Paragraph::new(security_lines), security_area);
         } else {
-            let no_security = Paragraph::new(
-                "Dependabot alerts not available\n(disabled or no access)"
-            )
-            .style(Style::default().fg(self.theme.text_secondary_color()))
-            .alignment(Alignment::Center);
+            let no_security =
+                Paragraph::new("Dependabot alerts not available\n(disabled or no access)")
+                    .style(Style::default().fg(self.theme.text_secondary_color()))
+                    .alignment(Alignment::Center);
             frame.render_widget(no_security, security_area);
         }
 
         // Community Health section
         let community_lines = if let Some(ref health) = snap.community_health {
             vec![
-                Line::from(Span::styled("Community Health:", Style::default().fg(self.theme.text_primary_color()).bold())),
+                Line::from(Span::styled(
+                    "Community Health:",
+                    Style::default().fg(self.theme.text_primary_color()).bold(),
+                )),
                 Line::from(vec![
-                    Span::styled("Score: ", Style::default().fg(self.theme.text_secondary_color())),
+                    Span::styled(
+                        "Score: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
                     Span::styled(
                         format!("{}/100", health.score),
                         if health.score >= 75 {
-                            Style::default().fg(self.theme.indicator_success_color()).bold()
+                            Style::default()
+                                .fg(self.theme.indicator_success_color())
+                                .bold()
                         } else if health.score >= 50 {
                             Style::default().fg(self.theme.indicator_warning_color())
                         } else {
-                            Style::default().fg(self.theme.indicator_error_color()).bold()
+                            Style::default()
+                                .fg(self.theme.indicator_error_color())
+                                .bold()
                         },
                     ),
                 ]),
                 Line::from(""),
-                Line::from(Span::styled("Health Checklist:", Style::default().fg(self.theme.text_secondary_color()))),
+                Line::from(Span::styled(
+                    "Health Checklist:",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                )),
                 Line::from(vec![
-                    Span::styled(if health.has_readme { "✓" } else { "✗" },
-                        if health.has_readme { Style::default().fg(self.theme.indicator_success_color()) }
-                        else { Style::default().fg(self.theme.indicator_error_color()) }),
-                    Span::styled(" README.md", Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        if health.has_readme { "✓" } else { "✗" },
+                        if health.has_readme {
+                            Style::default().fg(self.theme.indicator_success_color())
+                        } else {
+                            Style::default().fg(self.theme.indicator_error_color())
+                        },
+                    ),
+                    Span::styled(
+                        " README.md",
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled(if health.has_license { "✓" } else { "✗" },
-                        if health.has_license { Style::default().fg(self.theme.indicator_success_color()) }
-                        else { Style::default().fg(self.theme.indicator_error_color()) }),
-                    Span::styled(" LICENSE", Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        if health.has_license { "✓" } else { "✗" },
+                        if health.has_license {
+                            Style::default().fg(self.theme.indicator_success_color())
+                        } else {
+                            Style::default().fg(self.theme.indicator_error_color())
+                        },
+                    ),
+                    Span::styled(
+                        " LICENSE",
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled(if health.has_contributing { "✓" } else { "✗" },
-                        if health.has_contributing { Style::default().fg(self.theme.indicator_success_color()) }
-                        else { Style::default().fg(self.theme.indicator_error_color()) }),
-                    Span::styled(" CONTRIBUTING.md", Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        if health.has_contributing {
+                            "✓"
+                        } else {
+                            "✗"
+                        },
+                        if health.has_contributing {
+                            Style::default().fg(self.theme.indicator_success_color())
+                        } else {
+                            Style::default().fg(self.theme.indicator_error_color())
+                        },
+                    ),
+                    Span::styled(
+                        " CONTRIBUTING.md",
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled(if health.has_code_of_conduct { "✓" } else { "✗" },
-                        if health.has_code_of_conduct { Style::default().fg(self.theme.indicator_success_color()) }
-                        else { Style::default().fg(self.theme.indicator_error_color()) }),
-                    Span::styled(" CODE_OF_CONDUCT.md", Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        if health.has_code_of_conduct {
+                            "✓"
+                        } else {
+                            "✗"
+                        },
+                        if health.has_code_of_conduct {
+                            Style::default().fg(self.theme.indicator_success_color())
+                        } else {
+                            Style::default().fg(self.theme.indicator_error_color())
+                        },
+                    ),
+                    Span::styled(
+                        " CODE_OF_CONDUCT.md",
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled(if health.has_issue_templates { "✓" } else { "✗" },
-                        if health.has_issue_templates { Style::default().fg(self.theme.indicator_success_color()) }
-                        else { Style::default().fg(self.theme.indicator_error_color()) }),
-                    Span::styled(" Issue Templates", Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        if health.has_issue_templates {
+                            "✓"
+                        } else {
+                            "✗"
+                        },
+                        if health.has_issue_templates {
+                            Style::default().fg(self.theme.indicator_success_color())
+                        } else {
+                            Style::default().fg(self.theme.indicator_error_color())
+                        },
+                    ),
+                    Span::styled(
+                        " Issue Templates",
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled(if health.has_pr_template { "✓" } else { "✗" },
-                        if health.has_pr_template { Style::default().fg(self.theme.indicator_success_color()) }
-                        else { Style::default().fg(self.theme.indicator_error_color()) }),
-                    Span::styled(" PR Template", Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        if health.has_pr_template { "✓" } else { "✗" },
+                        if health.has_pr_template {
+                            Style::default().fg(self.theme.indicator_success_color())
+                        } else {
+                            Style::default().fg(self.theme.indicator_error_color())
+                        },
+                    ),
+                    Span::styled(
+                        " PR Template",
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                 ]),
                 Line::from(vec![
-                    Span::styled(if health.has_security_policy { "✓" } else { "✗" },
-                        if health.has_security_policy { Style::default().fg(self.theme.indicator_success_color()) }
-                        else { Style::default().fg(self.theme.indicator_error_color()) }),
-                    Span::styled(" SECURITY.md", Style::default().fg(self.theme.text_primary_color())),
+                    Span::styled(
+                        if health.has_security_policy {
+                            "✓"
+                        } else {
+                            "✗"
+                        },
+                        if health.has_security_policy {
+                            Style::default().fg(self.theme.indicator_success_color())
+                        } else {
+                            Style::default().fg(self.theme.indicator_error_color())
+                        },
+                    ),
+                    Span::styled(
+                        " SECURITY.md",
+                        Style::default().fg(self.theme.text_primary_color()),
+                    ),
                 ]),
             ]
         } else {
@@ -832,11 +1090,9 @@ impl App {
         };
 
         let Some(ref ci) = snap.ci_status else {
-            let paragraph = Paragraph::new(
-                "GitHub Actions not available\n(disabled or no access)"
-            )
-            .style(Style::default().fg(self.theme.text_secondary_color()))
-            .alignment(Alignment::Center);
+            let paragraph = Paragraph::new("GitHub Actions not available\n(disabled or no access)")
+                .style(Style::default().fg(self.theme.text_secondary_color()))
+                .alignment(Alignment::Center);
             frame.render_widget(paragraph, area);
             return;
         };
@@ -856,11 +1112,8 @@ impl App {
         frame.render_widget(block, area);
 
         // Split into summary and runs list
-        let [summary_area, runs_area] = Layout::vertical([
-            Constraint::Length(5),
-            Constraint::Fill(1),
-        ])
-        .areas(inner);
+        let [summary_area, runs_area] =
+            Layout::vertical([Constraint::Length(5), Constraint::Fill(1)]).areas(inner);
 
         // Summary section
         let avg_duration = if ci.avg_duration_seconds < 60 {
@@ -868,29 +1121,52 @@ impl App {
         } else if ci.avg_duration_seconds < 3600 {
             format!("{}m", ci.avg_duration_seconds / 60)
         } else {
-            format!("{}h {}m", ci.avg_duration_seconds / 3600, (ci.avg_duration_seconds % 3600) / 60)
+            format!(
+                "{}h {}m",
+                ci.avg_duration_seconds / 3600,
+                (ci.avg_duration_seconds % 3600) / 60
+            )
         };
 
         let success_rate_style = if ci.success_rate >= 90.0 {
-            Style::default().fg(self.theme.indicator_success_color()).bold()
+            Style::default()
+                .fg(self.theme.indicator_success_color())
+                .bold()
         } else if ci.success_rate >= 70.0 {
             Style::default().fg(self.theme.indicator_warning_color())
         } else {
-            Style::default().fg(self.theme.indicator_error_color()).bold()
+            Style::default()
+                .fg(self.theme.indicator_error_color())
+                .bold()
         };
 
         let summary_text = vec![
             Line::from(vec![
-                Span::styled("Success Rate: ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Success Rate: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(format!("{:.1}%", ci.success_rate), success_rate_style),
             ]),
             Line::from(vec![
-                Span::styled("Total Runs (30d): ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(format!("{}", ci.total_runs_30d), Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Total Runs (30d): ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    format!("{}", ci.total_runs_30d),
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Avg Duration: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(avg_duration, Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Avg Duration: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    avg_duration,
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
             Line::from(""),
         ];
@@ -905,10 +1181,8 @@ impl App {
             let available_height = runs_area.height.saturating_sub(2);
             let visible_count = available_height as usize;
 
-            let visible_runs: Vec<&crate::core::models::WorkflowRun> = ci.recent_runs
-                .iter()
-                .take(visible_count.max(5))
-                .collect();
+            let visible_runs: Vec<&crate::core::models::WorkflowRun> =
+                ci.recent_runs.iter().take(visible_count.max(5)).collect();
 
             let rows: Vec<Row> = visible_runs
                 .iter()
@@ -927,7 +1201,11 @@ impl App {
                     } else if run.duration_seconds < 3600 {
                         format!("{}m", run.duration_seconds / 60)
                     } else {
-                        format!("{}h {}m", run.duration_seconds / 3600, (run.duration_seconds % 3600) / 60)
+                        format!(
+                            "{}h {}m",
+                            run.duration_seconds / 3600,
+                            (run.duration_seconds % 3600) / 60
+                        )
                     };
 
                     // Format when (age)

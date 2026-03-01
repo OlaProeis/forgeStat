@@ -22,7 +22,10 @@ pub fn format_summary(snapshot: &RepoSnapshot) -> String {
 
     // Header: Repository name
     let repo_full_name = format!("{}/{}", snapshot.repo.owner, snapshot.repo.name);
-    output.push_str(&format!("{}{}Repository: {}{}\n", BOLD, CYAN, repo_full_name, RESET));
+    output.push_str(&format!(
+        "{}{}Repository: {}{}\n",
+        BOLD, CYAN, repo_full_name, RESET
+    ));
 
     // Separator line
     let sep_width = repo_full_name.len() + 12; // "Repository: " = 12 chars
@@ -40,8 +43,12 @@ pub fn format_summary(snapshot: &RepoSnapshot) -> String {
     };
     output.push_str(&format!(
         "Health Score: {}{}/100{} (Grade: {}{}{})\n",
-        health_color, health.total, RESET,
-        health_color, health.grade.as_letter(), RESET
+        health_color,
+        health.total,
+        RESET,
+        health_color,
+        health.grade.as_letter(),
+        RESET
     ));
     output.push_str(&format!(
         "              Activity: {:>2}/25 | Community: {:>2}/25 | Maintenance: {:>2}/25 | Growth: {:>2}/25\n\n",
@@ -122,7 +129,10 @@ pub fn format_summary(snapshot: &RepoSnapshot) -> String {
     let contributors = &snapshot.contributors;
     let contrib_str = format_count(contributors.total_unique);
     let new_contrib_str = if !contributors.new_contributors_last_30d.is_empty() {
-        format!(" ({} new this month)", contributors.new_contributors_last_30d.len())
+        format!(
+            " ({} new this month)",
+            contributors.new_contributors_last_30d.len()
+        )
     } else {
         String::new()
     };
@@ -142,7 +152,10 @@ pub fn format_summary(snapshot: &RepoSnapshot) -> String {
     } else {
         "No releases".to_string()
     };
-    output.push_str(&format!("{}🏷️  Releases:{}      {}\n", BOLD, RESET, release_str));
+    output.push_str(&format!(
+        "{}🏷️  Releases:{}      {}\n",
+        BOLD, RESET, release_str
+    ));
 
     // Velocity metric
     let velocity = &snapshot.velocity;
@@ -229,8 +242,8 @@ fn calculate_weekly_average(weekly_data: &[crate::core::models::WeeklyActivity])
 mod tests {
     use super::*;
     use crate::core::models::{
-        ContributorStats, IssueStats, PrStats, RepoMeta, RepoSnapshot, SecurityAlerts,
-        StarHistory, VelocityStats,
+        ContributorStats, IssueStats, PrStats, RepoMeta, RepoSnapshot, SecurityAlerts, StarHistory,
+        VelocityStats,
     };
     use chrono::Utc;
     use std::collections::HashMap;

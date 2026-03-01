@@ -1,10 +1,10 @@
 use ratatui::{prelude::*, widgets::*};
 
+use super::utils::resample_to_width;
+use super::App;
 use crate::core::health::{compute_health_score, HealthScore};
 use crate::core::models::RepoSnapshot;
 use crate::tui::widgets::BrailleSparkline;
-use super::utils::resample_to_width;
-use super::App;
 
 /// Which side is focused in compare mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,7 +82,8 @@ impl App {
     /// Render the split-screen compare content
     fn render_compare_content(&self, frame: &mut Frame, area: Rect) {
         let [left_area, right_area] =
-            Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(area);
+            Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .areas(area);
 
         // Left side: Primary repository
         self.render_compare_side(
@@ -196,8 +197,12 @@ impl App {
         };
 
         // Determine winner highlighting
-        let is_winner = other_health.map(|oh| health.total > oh.total).unwrap_or(false);
-        let is_tied = other_health.map(|oh| health.total == oh.total).unwrap_or(false);
+        let is_winner = other_health
+            .map(|oh| health.total > oh.total)
+            .unwrap_or(false);
+        let is_tied = other_health
+            .map(|oh| health.total == oh.total)
+            .unwrap_or(false);
 
         let (score_color, winner_indicator) = if is_winner {
             (self.theme.indicator_success_color(), " ★")
@@ -212,7 +217,9 @@ impl App {
             crate::core::health::HealthGrade::Excellent => self.theme.indicator_success_color(),
             crate::core::health::HealthGrade::Good => self.theme.text_highlight_color(),
             crate::core::health::HealthGrade::Fair => self.theme.indicator_warning_color(),
-            crate::core::health::HealthGrade::NeedsAttention => self.theme.indicator_warning_color(),
+            crate::core::health::HealthGrade::NeedsAttention => {
+                self.theme.indicator_warning_color()
+            }
             crate::core::health::HealthGrade::Critical => self.theme.indicator_error_color(),
         };
 
@@ -273,8 +280,14 @@ impl App {
         let delta = other_stars.map(|o| star_count as i64 - o as i64);
 
         let (count_text, count_style) = match delta {
-            Some(d) if d > 0 => (format!("{} (+{} vs other)", star_count, d), self.theme.indicator_success_color()),
-            Some(d) if d < 0 => (format!("{} ({} vs other)", star_count, d), self.theme.indicator_error_color()),
+            Some(d) if d > 0 => (
+                format!("{} (+{} vs other)", star_count, d),
+                self.theme.indicator_success_color(),
+            ),
+            Some(d) if d < 0 => (
+                format!("{} ({} vs other)", star_count, d),
+                self.theme.indicator_error_color(),
+            ),
             _ => (star_count.to_string(), self.theme.text_primary_color()),
         };
 
@@ -284,15 +297,18 @@ impl App {
 
         // Split area for sparkline
         let [text_area, spark_area] =
-            Layout::vertical([Constraint::Length(2), Constraint::Fill(1)]).areas(
-                area.inner(ratatui::layout::Margin {
+            Layout::vertical([Constraint::Length(2), Constraint::Fill(1)]).areas(area.inner(
+                ratatui::layout::Margin {
                     horizontal: 1,
                     vertical: 0,
-                }),
-            );
+                },
+            ));
 
         let text = vec![Line::from(vec![
-            Span::styled("Total: ", Style::default().fg(self.theme.text_secondary_color())),
+            Span::styled(
+                "Total: ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
             Span::styled(count_text, Style::default().fg(count_style).bold()),
         ])];
 
@@ -350,8 +366,14 @@ impl App {
 
         // For issues, fewer is better (lower is winning)
         let (count_text, count_style) = match delta {
-            Some(d) if d < 0 => (format!("{} ({} vs other)", issue_count, d), self.theme.indicator_success_color()),
-            Some(d) if d > 0 => (format!("{} (+{} vs other)", issue_count, d), self.theme.indicator_error_color()),
+            Some(d) if d < 0 => (
+                format!("{} ({} vs other)", issue_count, d),
+                self.theme.indicator_success_color(),
+            ),
+            Some(d) if d > 0 => (
+                format!("{} (+{} vs other)", issue_count, d),
+                self.theme.indicator_error_color(),
+            ),
             _ => (issue_count.to_string(), self.theme.text_primary_color()),
         };
 
@@ -364,15 +386,19 @@ impl App {
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Open: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(count_text, Style::default().fg(count_style).bold()),
-            ]),
-            Line::from(vec![
                 Span::styled(
-                    format!("By label: {} | Unlabelled: {}", label_count, unlabelled_count),
+                    "Open: ",
                     Style::default().fg(self.theme.text_secondary_color()),
                 ),
+                Span::styled(count_text, Style::default().fg(count_style).bold()),
             ]),
+            Line::from(vec![Span::styled(
+                format!(
+                    "By label: {} | Unlabelled: {}",
+                    label_count, unlabelled_count
+                ),
+                Style::default().fg(self.theme.text_secondary_color()),
+            )]),
         ];
 
         let paragraph = Paragraph::new(text).block(block);
@@ -410,8 +436,14 @@ impl App {
 
         // For PRs, fewer open is generally better (lower backlog)
         let (count_text, count_style) = match delta {
-            Some(d) if d < 0 => (format!("{} ({} vs other)", pr_count, d), self.theme.indicator_success_color()),
-            Some(d) if d > 0 => (format!("{} (+{} vs other)", pr_count, d), self.theme.indicator_error_color()),
+            Some(d) if d < 0 => (
+                format!("{} ({} vs other)", pr_count, d),
+                self.theme.indicator_success_color(),
+            ),
+            Some(d) if d > 0 => (
+                format!("{} (+{} vs other)", pr_count, d),
+                self.theme.indicator_error_color(),
+            ),
             _ => (pr_count.to_string(), self.theme.text_primary_color()),
         };
 
@@ -425,21 +457,20 @@ impl App {
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Open: ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Open: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(count_text, Style::default().fg(count_style).bold()),
             ]),
-            Line::from(vec![
-                Span::styled(
-                    format!("Draft: {} | Ready: {}", draft_count, ready_count),
-                    Style::default().fg(self.theme.text_secondary_color()),
-                ),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    format!("Merged (30d): {}", merged_30d),
-                    Style::default().fg(self.theme.text_secondary_color()),
-                ),
-            ]),
+            Line::from(vec![Span::styled(
+                format!("Draft: {} | Ready: {}", draft_count, ready_count),
+                Style::default().fg(self.theme.text_secondary_color()),
+            )]),
+            Line::from(vec![Span::styled(
+                format!("Merged (30d): {}", merged_30d),
+                Style::default().fg(self.theme.text_secondary_color()),
+            )]),
         ];
 
         let paragraph = Paragraph::new(text).block(block);
@@ -449,7 +480,10 @@ impl App {
     /// Get the other repository's PR count for comparison
     fn get_other_repo_prs(&self) -> Option<u64> {
         match self.compare_focus {
-            CompareFocus::Left => self.compare_snapshot.as_ref().map(|s| s.pull_requests.open_count),
+            CompareFocus::Left => self
+                .compare_snapshot
+                .as_ref()
+                .map(|s| s.pull_requests.open_count),
             CompareFocus::Right => self.snapshot.as_ref().map(|s| s.pull_requests.open_count),
         }
     }
@@ -476,8 +510,14 @@ impl App {
         let delta = other_contributors.map(|o| contrib_count as i64 - o as i64);
 
         let (count_text, count_style) = match delta {
-            Some(d) if d > 0 => (format!("{} (+{} vs other)", contrib_count, d), self.theme.indicator_success_color()),
-            Some(d) if d < 0 => (format!("{} ({} vs other)", contrib_count, d), self.theme.indicator_error_color()),
+            Some(d) if d > 0 => (
+                format!("{} (+{} vs other)", contrib_count, d),
+                self.theme.indicator_success_color(),
+            ),
+            Some(d) if d < 0 => (
+                format!("{} ({} vs other)", contrib_count, d),
+                self.theme.indicator_error_color(),
+            ),
             _ => (contrib_count.to_string(), self.theme.text_primary_color()),
         };
 
@@ -489,15 +529,16 @@ impl App {
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Total: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(count_text, Style::default().fg(count_style).bold()),
-            ]),
-            Line::from(vec![
                 Span::styled(
-                    format!("New (30d): {}", new_contributors),
+                    "Total: ",
                     Style::default().fg(self.theme.text_secondary_color()),
                 ),
+                Span::styled(count_text, Style::default().fg(count_style).bold()),
             ]),
+            Line::from(vec![Span::styled(
+                format!("New (30d): {}", new_contributors),
+                Style::default().fg(self.theme.text_secondary_color()),
+            )]),
         ];
 
         let paragraph = Paragraph::new(text).block(block);
@@ -507,7 +548,10 @@ impl App {
     /// Get the other repository's contributor count for comparison
     fn get_other_repo_contributors(&self) -> Option<u64> {
         match self.compare_focus {
-            CompareFocus::Left => self.compare_snapshot.as_ref().map(|s| s.contributors.total_unique),
+            CompareFocus::Left => self
+                .compare_snapshot
+                .as_ref()
+                .map(|s| s.contributors.total_unique),
             CompareFocus::Right => self.snapshot.as_ref().map(|s| s.contributors.total_unique),
         }
     }
@@ -534,8 +578,14 @@ impl App {
         let delta = other_releases.map(|o| release_count as i64 - o as i64);
 
         let (count_text, count_style) = match delta {
-            Some(d) if d > 0 => (format!("{} (+{} vs other)", release_count, d), self.theme.indicator_success_color()),
-            Some(d) if d < 0 => (format!("{} ({} vs other)", release_count, d), self.theme.indicator_error_color()),
+            Some(d) if d > 0 => (
+                format!("{} (+{} vs other)", release_count, d),
+                self.theme.indicator_success_color(),
+            ),
+            Some(d) if d < 0 => (
+                format!("{} ({} vs other)", release_count, d),
+                self.theme.indicator_error_color(),
+            ),
             _ => (release_count.to_string(), self.theme.text_primary_color()),
         };
 
@@ -547,19 +597,31 @@ impl App {
             .releases
             .first()
             .map(|r| {
-                let days_text = r.days_since.map(|d| format!("{}d ago", d)).unwrap_or_else(|| "unknown".to_string());
+                let days_text = r
+                    .days_since
+                    .map(|d| format!("{}d ago", d))
+                    .unwrap_or_else(|| "unknown".to_string());
                 format!("{} ({})", r.tag_name, days_text)
             })
             .unwrap_or_else(|| "No releases".to_string());
 
         let text = vec![
             Line::from(vec![
-                Span::styled("Count: ", Style::default().fg(self.theme.text_secondary_color())),
+                Span::styled(
+                    "Count: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
                 Span::styled(count_text, Style::default().fg(count_style).bold()),
             ]),
             Line::from(vec![
-                Span::styled("Latest: ", Style::default().fg(self.theme.text_secondary_color())),
-                Span::styled(latest_text, Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Latest: ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ),
+                Span::styled(
+                    latest_text,
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ]),
         ];
 
@@ -570,7 +632,10 @@ impl App {
     /// Get the other repository's release count for comparison
     fn get_other_repo_releases(&self) -> Option<u64> {
         match self.compare_focus {
-            CompareFocus::Left => self.compare_snapshot.as_ref().map(|s| s.releases.len() as u64),
+            CompareFocus::Left => self
+                .compare_snapshot
+                .as_ref()
+                .map(|s| s.releases.len() as u64),
             CompareFocus::Right => self.snapshot.as_ref().map(|s| s.releases.len() as u64),
         }
     }
@@ -605,21 +670,42 @@ impl App {
 
             // For security alerts, fewer is better
             let (total_text, total_style) = match delta {
-                Some(d) if d < 0 => (format!("{} ({} vs other)", total, d), self.theme.indicator_success_color()),
-                Some(d) if d > 0 => (format!("{} (+{} vs other)", total, d), self.theme.indicator_error_color()),
+                Some(d) if d < 0 => (
+                    format!("{} ({} vs other)", total, d),
+                    self.theme.indicator_success_color(),
+                ),
+                Some(d) if d > 0 => (
+                    format!("{} (+{} vs other)", total, d),
+                    self.theme.indicator_error_color(),
+                ),
                 _ => (total.to_string(), self.theme.text_primary_color()),
             };
 
             vec![
                 Line::from(vec![
-                    Span::styled("Total: ", Style::default().fg(self.theme.text_secondary_color())),
+                    Span::styled(
+                        "Total: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
                     Span::styled(total_text, Style::default().fg(total_style).bold()),
                 ]),
                 Line::from(vec![
-                    Span::styled("Critical: ", Style::default().fg(self.theme.text_secondary_color())),
-                    Span::styled(critical.to_string(), Style::default().fg(self.theme.indicator_error_color())),
-                    Span::styled(" | High: ", Style::default().fg(self.theme.text_secondary_color())),
-                    Span::styled(high.to_string(), Style::default().fg(self.theme.indicator_warning_color())),
+                    Span::styled(
+                        "Critical: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
+                    Span::styled(
+                        critical.to_string(),
+                        Style::default().fg(self.theme.indicator_error_color()),
+                    ),
+                    Span::styled(
+                        " | High: ",
+                        Style::default().fg(self.theme.text_secondary_color()),
+                    ),
+                    Span::styled(
+                        high.to_string(),
+                        Style::default().fg(self.theme.indicator_warning_color()),
+                    ),
                 ]),
             ]
         } else {
@@ -636,8 +722,14 @@ impl App {
     /// Get the other repository's security alert count for comparison
     fn get_other_repo_security(&self) -> Option<u64> {
         match self.compare_focus {
-            CompareFocus::Left => self.compare_snapshot.as_ref().and_then(|s| s.security_alerts.as_ref().map(|sec| sec.total_open)),
-            CompareFocus::Right => self.snapshot.as_ref().and_then(|s| s.security_alerts.as_ref().map(|sec| sec.total_open)),
+            CompareFocus::Left => self
+                .compare_snapshot
+                .as_ref()
+                .and_then(|s| s.security_alerts.as_ref().map(|sec| sec.total_open)),
+            CompareFocus::Right => self
+                .snapshot
+                .as_ref()
+                .and_then(|s| s.security_alerts.as_ref().map(|sec| sec.total_open)),
         }
     }
 
@@ -649,37 +741,68 @@ impl App {
         };
 
         let mut spans: Vec<Span> = vec![
-            Span::styled("Compare Mode", Style::default().fg(self.theme.text_highlight_color()).bold()),
-            Span::styled(" | ", Style::default().fg(self.theme.text_secondary_color())),
-            Span::styled(focus_text, Style::default().fg(self.theme.text_primary_color())),
+            Span::styled(
+                "Compare Mode",
+                Style::default()
+                    .fg(self.theme.text_highlight_color())
+                    .bold(),
+            ),
+            Span::styled(
+                " | ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ),
+            Span::styled(
+                focus_text,
+                Style::default().fg(self.theme.text_primary_color()),
+            ),
         ];
 
         // Add comparison summary
         if let (Some(primary), Some(compare)) = (&self.snapshot, &self.compare_snapshot) {
-            let primary_health_score = self.health_score.as_ref().map(|h| h.total).unwrap_or_else(|| compute_health_score(primary).total);
-            let compare_health_score = self.compare_health_score.as_ref().map(|h| h.total).unwrap_or_else(|| compute_health_score(compare).total);
+            let primary_health_score = self
+                .health_score
+                .as_ref()
+                .map(|h| h.total)
+                .unwrap_or_else(|| compute_health_score(primary).total);
+            let compare_health_score = self
+                .compare_health_score
+                .as_ref()
+                .map(|h| h.total)
+                .unwrap_or_else(|| compute_health_score(compare).total);
 
-            spans.push(Span::styled(" | ", Style::default().fg(self.theme.text_secondary_color())));
+            spans.push(Span::styled(
+                " | ",
+                Style::default().fg(self.theme.text_secondary_color()),
+            ));
 
             if primary_health_score > compare_health_score {
                 spans.push(Span::styled(
                     format!("Winner: {}/{}", primary.repo.owner, primary.repo.name),
-                    Style::default().fg(self.theme.indicator_success_color()).bold(),
+                    Style::default()
+                        .fg(self.theme.indicator_success_color())
+                        .bold(),
                 ));
             } else if compare_health_score > primary_health_score {
                 spans.push(Span::styled(
                     format!("Winner: {}/{}", compare.repo.owner, compare.repo.name),
-                    Style::default().fg(self.theme.indicator_success_color()).bold(),
+                    Style::default()
+                        .fg(self.theme.indicator_success_color())
+                        .bold(),
                 ));
             } else {
                 spans.push(Span::styled(
                     "Tied",
-                    Style::default().fg(self.theme.text_highlight_color()).bold(),
+                    Style::default()
+                        .fg(self.theme.text_highlight_color())
+                        .bold(),
                 ));
             }
         }
 
-        spans.push(Span::styled(" | Tab: switch  q: quit", Style::default().fg(self.theme.text_secondary_color())));
+        spans.push(Span::styled(
+            " | Tab: switch  q: quit",
+            Style::default().fg(self.theme.text_secondary_color()),
+        ));
 
         let status_line = Line::from(spans);
         let paragraph = Paragraph::new(status_line).alignment(Alignment::Left);

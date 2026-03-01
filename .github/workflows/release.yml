@@ -59,7 +59,7 @@ jobs:
             REF="${{ github.ref }}"
           fi
 
-          cargo dist host --steps=upload --steps=release --output-format=json "$REF" > dist-manifest.json || true
+          dist host --steps=upload --steps=release --output-format=json "$REF" > dist-manifest.json || true
 
           # If cargo-dist plan fails, we'll still proceed with manual build
           if [ -f dist-manifest.json ]; then
@@ -159,7 +159,7 @@ jobs:
           fi
 
           # Build with cargo-dist
-          cargo dist build --artifacts=local --target=${{ matrix.target }} --output-format=json > dist-manifest.json || true
+          dist build --artifacts=local --target=${{ matrix.target }} --output-format=json > dist-manifest.json || true
 
           # Fallback: manual build if cargo-dist fails
           if [ ! -d "target/dist" ]; then

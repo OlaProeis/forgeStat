@@ -46,25 +46,32 @@ pub async fn fetch_snapshot(
     log::info!("Fetching fresh snapshot for {}/{}", owner, repo);
 
     // Check for existing snapshot to set previous_snapshot_at
-    let previous_snapshot_at = cache
-        .load()
-        .await?
-        .map(|(snapshot, _)| snapshot.fetched_at);
+    let previous_snapshot_at = cache.load().await?.map(|(snapshot, _)| snapshot.fetched_at);
 
-    let (repo_meta, stars, issues, prs, contributors, releases, velocity, security, ci_status, community) =
-        tokio::try_join!(
-            client.repos(owner, repo),
-            client.stargazers(owner, repo),
-            client.issues(owner, repo),
-            client.pull_requests(owner, repo),
-            client.contributors(owner, repo),
-            client.releases(owner, repo),
-            client.velocity(owner, repo),
-            client.security_alerts(owner, repo),
-            client.ci_status(owner, repo),
-            client.community_health(owner, repo),
-        )
-        .with_context(|| format!("Failed to fetch metrics for {}/{}", owner, repo))?;
+    let (
+        repo_meta,
+        stars,
+        issues,
+        prs,
+        contributors,
+        releases,
+        velocity,
+        security,
+        ci_status,
+        community,
+    ) = tokio::try_join!(
+        client.repos(owner, repo),
+        client.stargazers(owner, repo),
+        client.issues(owner, repo),
+        client.pull_requests(owner, repo),
+        client.contributors(owner, repo),
+        client.releases(owner, repo),
+        client.velocity(owner, repo),
+        client.security_alerts(owner, repo),
+        client.ci_status(owner, repo),
+        client.community_health(owner, repo),
+    )
+    .with_context(|| format!("Failed to fetch metrics for {}/{}", owner, repo))?;
 
     let snapshot = RepoSnapshot {
         fetched_at: Utc::now(),
@@ -122,10 +129,7 @@ pub async fn fetch_snapshot_with_progress(
     log::info!("Fetching fresh snapshot for {}/{}", owner, repo);
 
     // Check for existing snapshot to set previous_snapshot_at
-    let previous_snapshot_at = cache
-        .load()
-        .await?
-        .map(|(snapshot, _)| snapshot.fetched_at);
+    let previous_snapshot_at = cache.load().await?.map(|(snapshot, _)| snapshot.fetched_at);
 
     let total_endpoints = ENDPOINTS.len();
 
@@ -168,7 +172,14 @@ pub async fn fetch_snapshot_with_progress(
         }
     };
 
-    report_progress(&progress_tx, total_endpoints, 0, Some("Star History"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        0,
+        Some("Star History"),
+        star_count,
+    )
+    .await;
 
     // Create a progress channel for stargazer page updates
     let (page_progress_tx, mut page_progress_rx) = tokio::sync::mpsc::channel::<(u32, u32)>(100);
@@ -198,13 +209,15 @@ pub async fn fetch_snapshot_with_progress(
         let repo = repo.to_string();
         let page_progress_tx = page_progress_tx.clone();
         async move {
-            let result = client.stargazers_with_progress(
-                &owner,
-                &repo,
-                Some(Box::new(move |current, total| {
-                    let _ = page_progress_tx.try_send((current, total));
-                })),
-            ).await;
+            let result = client
+                .stargazers_with_progress(
+                    &owner,
+                    &repo,
+                    Some(Box::new(move |current, total| {
+                        let _ = page_progress_tx.try_send((current, total));
+                    })),
+                )
+                .await;
             result
         }
     });
@@ -217,7 +230,14 @@ pub async fn fetch_snapshot_with_progress(
         async move { client.issues(&owner, &repo).await }
     });
 
-    report_progress(&progress_tx, total_endpoints, 0, Some("Pull Requests"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        0,
+        Some("Pull Requests"),
+        star_count,
+    )
+    .await;
     let prs_handle = tokio::spawn({
         let client = client.clone();
         let owner = owner.to_string();
@@ -225,7 +245,14 @@ pub async fn fetch_snapshot_with_progress(
         async move { client.pull_requests(&owner, &repo).await }
     });
 
-    report_progress(&progress_tx, total_endpoints, 0, Some("Contributors"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        0,
+        Some("Contributors"),
+        star_count,
+    )
+    .await;
     let contributors_handle = tokio::spawn({
         let client = client.clone();
         let owner = owner.to_string();
@@ -233,7 +260,14 @@ pub async fn fetch_snapshot_with_progress(
         async move { client.contributors(&owner, &repo).await }
     });
 
-    report_progress(&progress_tx, total_endpoints, 0, Some("Releases"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        0,
+        Some("Releases"),
+        star_count,
+    )
+    .await;
     let releases_handle = tokio::spawn({
         let client = client.clone();
         let owner = owner.to_string();
@@ -241,7 +275,14 @@ pub async fn fetch_snapshot_with_progress(
         async move { client.releases(&owner, &repo).await }
     });
 
-    report_progress(&progress_tx, total_endpoints, 0, Some("Velocity"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        0,
+        Some("Velocity"),
+        star_count,
+    )
+    .await;
     let velocity_handle = tokio::spawn({
         let client = client.clone();
         let owner = owner.to_string();
@@ -249,7 +290,14 @@ pub async fn fetch_snapshot_with_progress(
         async move { client.velocity(&owner, &repo).await }
     });
 
-    report_progress(&progress_tx, total_endpoints, 0, Some("Security Alerts"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        0,
+        Some("Security Alerts"),
+        star_count,
+    )
+    .await;
     let security_handle = tokio::spawn({
         let client = client.clone();
         let owner = owner.to_string();
@@ -257,7 +305,14 @@ pub async fn fetch_snapshot_with_progress(
         async move { client.security_alerts(&owner, &repo).await }
     });
 
-    report_progress(&progress_tx, total_endpoints, 0, Some("CI Status"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        0,
+        Some("CI Status"),
+        star_count,
+    )
+    .await;
     let ci_handle = tokio::spawn({
         let client = client.clone();
         let owner = owner.to_string();
@@ -265,7 +320,14 @@ pub async fn fetch_snapshot_with_progress(
         async move { client.ci_status(&owner, &repo).await }
     });
 
-    report_progress(&progress_tx, total_endpoints, 0, Some("Community Health"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        0,
+        Some("Community Health"),
+        star_count,
+    )
+    .await;
     let community_handle = tokio::spawn({
         let client = client.clone();
         let owner = owner.to_string();
@@ -275,31 +337,87 @@ pub async fn fetch_snapshot_with_progress(
 
     // Collect results with progress updates as each completes
     let repo_meta = repo_meta_result?;
-    report_progress(&progress_tx, total_endpoints, 1, Some("Star History"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        1,
+        Some("Star History"),
+        star_count,
+    )
+    .await;
 
     let stars = stars_handle.await?;
     report_progress(&progress_tx, total_endpoints, 2, Some("Issues"), star_count).await;
 
     let issues = issues_handle.await?;
-    report_progress(&progress_tx, total_endpoints, 3, Some("Pull Requests"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        3,
+        Some("Pull Requests"),
+        star_count,
+    )
+    .await;
 
     let prs = prs_handle.await?;
-    report_progress(&progress_tx, total_endpoints, 4, Some("Contributors"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        4,
+        Some("Contributors"),
+        star_count,
+    )
+    .await;
 
     let contributors = contributors_handle.await?;
-    report_progress(&progress_tx, total_endpoints, 5, Some("Releases"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        5,
+        Some("Releases"),
+        star_count,
+    )
+    .await;
 
     let releases = releases_handle.await?;
-    report_progress(&progress_tx, total_endpoints, 6, Some("Velocity"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        6,
+        Some("Velocity"),
+        star_count,
+    )
+    .await;
 
     let velocity = velocity_handle.await?;
-    report_progress(&progress_tx, total_endpoints, 7, Some("Security Alerts"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        7,
+        Some("Security Alerts"),
+        star_count,
+    )
+    .await;
 
     let security = security_handle.await?;
-    report_progress(&progress_tx, total_endpoints, 8, Some("CI Status"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        8,
+        Some("CI Status"),
+        star_count,
+    )
+    .await;
 
     let ci_status = ci_handle.await?;
-    report_progress(&progress_tx, total_endpoints, 9, Some("Community Health"), star_count).await;
+    report_progress(
+        &progress_tx,
+        total_endpoints,
+        9,
+        Some("Community Health"),
+        star_count,
+    )
+    .await;
 
     let community = community_handle.await?;
 

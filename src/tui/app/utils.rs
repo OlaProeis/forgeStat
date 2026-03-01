@@ -66,7 +66,8 @@ pub(crate) fn resample_to_width(data: &[u64], target_buckets: usize) -> Vec<u64>
             let end_idx = end_idx.min(data.len());
 
             if start_idx < end_idx {
-                let avg = data[start_idx..end_idx].iter().sum::<u64>() / (end_idx - start_idx) as u64;
+                let avg =
+                    data[start_idx..end_idx].iter().sum::<u64>() / (end_idx - start_idx) as u64;
                 result.push(avg);
             } else {
                 result.push(data[start_idx.min(data.len() - 1)]);

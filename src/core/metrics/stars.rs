@@ -134,16 +134,18 @@ mod tests {
         assert_eq!(result.len(), 30);
         let sum: u32 = result.iter().sum();
         assert_eq!(sum, 1);
-        assert!(result[14] == 1 || result[15] == 1, "star should land near bucket 14-15");
+        assert!(
+            result[14] == 1 || result[15] == 1,
+            "star should land near bucket 14-15"
+        );
     }
 
     #[test]
     fn test_total_count_preserved() {
         let now = Utc::now();
         let start = now - Duration::days(30);
-        let timestamps: Vec<DateTime<Utc>> = (0..100)
-            .map(|i| start + Duration::hours(i * 7))
-            .collect();
+        let timestamps: Vec<DateTime<Utc>> =
+            (0..100).map(|i| start + Duration::hours(i * 7)).collect();
 
         let result = generate_sparkline(&timestamps, start, 30);
         assert_eq!(result.len(), 30);
@@ -170,9 +172,7 @@ mod tests {
     fn test_90d_weekly_buckets() {
         let now = Utc::now();
         let start = now - Duration::days(90);
-        let timestamps: Vec<DateTime<Utc>> = (0..90)
-            .map(|i| start + Duration::days(i))
-            .collect();
+        let timestamps: Vec<DateTime<Utc>> = (0..90).map(|i| start + Duration::days(i)).collect();
 
         let result = generate_sparkline(&timestamps, start, 13);
         assert_eq!(result.len(), 13);
@@ -184,9 +184,7 @@ mod tests {
     fn test_365d_monthly_buckets() {
         let now = Utc::now();
         let start = now - Duration::days(365);
-        let timestamps: Vec<DateTime<Utc>> = (0..365)
-            .map(|i| start + Duration::days(i))
-            .collect();
+        let timestamps: Vec<DateTime<Utc>> = (0..365).map(|i| start + Duration::days(i)).collect();
 
         let result = generate_sparkline(&timestamps, start, 12);
         assert_eq!(result.len(), 12);
@@ -198,7 +196,11 @@ mod tests {
     // Milestone prediction tests
     // =========================================================================
 
-    fn create_star_history(total: u64, sparkline_30d: Vec<u32>, sparkline_90d: Vec<u32>) -> StarHistory {
+    fn create_star_history(
+        total: u64,
+        sparkline_30d: Vec<u32>,
+        sparkline_90d: Vec<u32>,
+    ) -> StarHistory {
         StarHistory {
             total_count: total,
             sparkline_30d,
@@ -225,7 +227,10 @@ mod tests {
         let history = create_star_history(50, vec![0; 30], vec![0; 90]);
         let prediction = predict_milestone(&history);
 
-        assert!(prediction.is_none(), "Should return None for stalled growth");
+        assert!(
+            prediction.is_none(),
+            "Should return None for stalled growth"
+        );
     }
 
     #[test]
@@ -234,7 +239,10 @@ mod tests {
         let history = create_star_history(50, vec![0; 30], vec![0; 90]);
         let prediction = predict_milestone(&history);
 
-        assert!(prediction.is_none(), "Should return None for negative growth");
+        assert!(
+            prediction.is_none(),
+            "Should return None for negative growth"
+        );
     }
 
     #[test]
@@ -243,7 +251,10 @@ mod tests {
         let history = create_star_history(150_000, vec![100; 30], vec![100; 90]);
         let prediction = predict_milestone(&history);
 
-        assert!(prediction.is_none(), "Should return None when past all milestones");
+        assert!(
+            prediction.is_none(),
+            "Should return None when past all milestones"
+        );
     }
 
     #[test]
@@ -263,7 +274,10 @@ mod tests {
         let history = create_star_history(50, vec![], vec![]);
         let prediction = predict_milestone(&history);
 
-        assert!(prediction.is_none(), "Should return None with no history data");
+        assert!(
+            prediction.is_none(),
+            "Should return None with no history data"
+        );
     }
 
     #[test]

@@ -1,5 +1,5 @@
-use std::time::{Duration, Instant};
 use super::{App, BorderType, DragState, Panel};
+use std::time::{Duration, Instant};
 
 /// Time window for double-click detection (300ms)
 const DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(300);
@@ -15,8 +15,16 @@ impl App {
         let is_double_click = self.last_click_time.map_or(false, |last_time| {
             let time_ok = now.duration_since(last_time) <= DOUBLE_CLICK_THRESHOLD;
             let pos_ok = self.last_click_pos.map_or(false, |(last_x, last_y)| {
-                let dx = if column > last_x { column - last_x } else { last_x - column };
-                let dy = if row > last_y { row - last_y } else { last_y - row };
+                let dx = if column > last_x {
+                    column - last_x
+                } else {
+                    last_x - column
+                };
+                let dy = if row > last_y {
+                    row - last_y
+                } else {
+                    last_y - row
+                };
                 dx <= DOUBLE_CLICK_DISTANCE && dy <= DOUBLE_CLICK_DISTANCE
             });
             time_ok && pos_ok
@@ -79,7 +87,13 @@ impl App {
     }
 
     /// Start dragging a border for resize
-    pub(super) fn start_border_drag(&mut self, border_type: BorderType, border_index: usize, column: u16, row: u16) {
+    pub(super) fn start_border_drag(
+        &mut self,
+        border_type: BorderType,
+        border_index: usize,
+        column: u16,
+        row: u16,
+    ) {
         self.drag_state = Some(DragState {
             border_index,
             border_type,
@@ -118,13 +132,14 @@ impl App {
     fn resize_vertical_border(&mut self, border_index: usize, delta_x: i32) {
         const MIN_WIDTH_PCT: u16 = 20;
 
-        let (columns, _row_idx): (&mut Vec<crate::core::config::PanelLayout>, usize) = match border_index {
-            0 => (&mut self.layout_config.row1_columns, 0),
-            1 => (&mut self.layout_config.row2_columns, 1),
-            2 => (&mut self.layout_config.row2_columns, 1),
-            3 => (&mut self.layout_config.row3_columns, 2),
-            _ => return,
-        };
+        let (columns, _row_idx): (&mut Vec<crate::core::config::PanelLayout>, usize) =
+            match border_index {
+                0 => (&mut self.layout_config.row1_columns, 0),
+                1 => (&mut self.layout_config.row2_columns, 1),
+                2 => (&mut self.layout_config.row2_columns, 1),
+                3 => (&mut self.layout_config.row3_columns, 2),
+                _ => return,
+            };
 
         if columns.len() < 2 {
             return;
@@ -143,8 +158,10 @@ impl App {
         let current_left = columns[left_idx].width_pct as i32;
         let current_right = columns[right_idx].width_pct as i32;
 
-        let new_left = (current_left + delta_pct).clamp(MIN_WIDTH_PCT as i32, (100 - MIN_WIDTH_PCT) as i32);
-        let new_right = (current_right - delta_pct).clamp(MIN_WIDTH_PCT as i32, (100 - MIN_WIDTH_PCT) as i32);
+        let new_left =
+            (current_left + delta_pct).clamp(MIN_WIDTH_PCT as i32, (100 - MIN_WIDTH_PCT) as i32);
+        let new_right =
+            (current_right - delta_pct).clamp(MIN_WIDTH_PCT as i32, (100 - MIN_WIDTH_PCT) as i32);
 
         let total = new_left + new_right;
         let normalized_left = (new_left * 100 / total) as u16;
@@ -159,7 +176,10 @@ impl App {
     fn resize_horizontal_border(&mut self, border_index: usize, delta_y: i32) {
         const MIN_HEIGHT_PCT: u16 = 20;
 
-        let (row1_ref, row2_ref): (&mut crate::core::config::PanelLayout, &mut crate::core::config::PanelLayout) = match border_index {
+        let (row1_ref, row2_ref): (
+            &mut crate::core::config::PanelLayout,
+            &mut crate::core::config::PanelLayout,
+        ) = match border_index {
             0 => (&mut self.layout_config.row1, &mut self.layout_config.row2),
             1 => (&mut self.layout_config.row2, &mut self.layout_config.row3),
             _ => return,
@@ -171,18 +191,34 @@ impl App {
         let current_bottom = row2_ref.height_pct as i32;
 
         let (new_top, new_bottom) = if border_index == 0 {
-            let new_top = (current_top + delta_pct).clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
-            let new_bottom = (current_bottom - delta_pct).clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
+            let new_top = (current_top + delta_pct)
+                .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
+            let new_bottom = (current_bottom - delta_pct)
+                .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
             (new_top, new_bottom)
         } else {
-            let new_mid = (current_top + delta_pct).clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
-            let new_bottom = (current_bottom - delta_pct).clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
+            let new_mid = (current_top + delta_pct)
+                .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
+            let new_bottom = (current_bottom - delta_pct)
+                .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
             (new_mid, new_bottom)
         };
 
-        let r1 = if border_index == 0 { new_top } else { self.layout_config.row1.height_pct as i32 };
-        let r2 = if border_index == 0 { new_bottom } else { new_top };
-        let r3 = if border_index == 0 { self.layout_config.row3.height_pct as i32 } else { new_bottom };
+        let r1 = if border_index == 0 {
+            new_top
+        } else {
+            self.layout_config.row1.height_pct as i32
+        };
+        let r2 = if border_index == 0 {
+            new_bottom
+        } else {
+            new_top
+        };
+        let r3 = if border_index == 0 {
+            self.layout_config.row3.height_pct as i32
+        } else {
+            new_bottom
+        };
 
         let total = r1 + r2 + r3;
         let normalized_r1 = (r1 * 100 / total) as u16;

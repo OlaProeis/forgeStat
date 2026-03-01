@@ -54,7 +54,8 @@ impl App {
         // Basic validation - GitHub tokens typically start with 'ghp_' or 'github_pat_'
         if !token.starts_with("ghp_") && !token.starts_with("github_pat_") {
             self.token_error = Some(
-                "Token should start with 'ghp_' (classic) or 'github_pat_' (fine-grained)".to_string(),
+                "Token should start with 'ghp_' (classic) or 'github_pat_' (fine-grained)"
+                    .to_string(),
             );
             return Ok(None);
         }
@@ -122,7 +123,10 @@ impl App {
 
         let input_line = if self.token_input.is_empty() {
             Line::from(vec![
-                Span::styled("Token: ", Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Token: ",
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
                 Span::styled(
                     "ghp_... or github_pat_...",
                     Style::default()
@@ -132,8 +136,14 @@ impl App {
             ])
         } else {
             Line::from(vec![
-                Span::styled("Token: ", Style::default().fg(self.theme.text_primary_color())),
-                Span::styled(display_token, Style::default().fg(self.theme.text_primary_color())),
+                Span::styled(
+                    "Token: ",
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
+                Span::styled(
+                    display_token,
+                    Style::default().fg(self.theme.text_primary_color()),
+                ),
             ])
         };
         text_lines.push(input_line);
@@ -143,8 +153,14 @@ impl App {
         // Add error message if present
         if let Some(ref error) = self.token_error {
             text_lines.push(Line::from(vec![
-                Span::styled("✗ ", Style::default().fg(self.theme.indicator_error_color())),
-                Span::styled(error.clone(), Style::default().fg(self.theme.indicator_error_color())),
+                Span::styled(
+                    "✗ ",
+                    Style::default().fg(self.theme.indicator_error_color()),
+                ),
+                Span::styled(
+                    error.clone(),
+                    Style::default().fg(self.theme.indicator_error_color()),
+                ),
             ]));
             text_lines.push(Line::from(""));
         }

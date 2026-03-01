@@ -105,11 +105,19 @@ impl StatusBarConfig {
             return Ok(Self::default());
         }
 
-        let config_str = fs::read_to_string(&config_path)
-            .with_context(|| format!("Failed to read status bar config at: {}", config_path.display()))?;
+        let config_str = fs::read_to_string(&config_path).with_context(|| {
+            format!(
+                "Failed to read status bar config at: {}",
+                config_path.display()
+            )
+        })?;
 
-        let mut config: StatusBarConfig = toml::from_str(&config_str)
-            .with_context(|| format!("Failed to parse status bar config at: {}", config_path.display()))?;
+        let mut config: StatusBarConfig = toml::from_str(&config_str).with_context(|| {
+            format!(
+                "Failed to parse status bar config at: {}",
+                config_path.display()
+            )
+        })?;
 
         // Enforce max 3 items limit
         if config.items.len() > 3 {
@@ -136,8 +144,12 @@ impl StatusBarConfig {
 
         // Create config directory if it doesn't exist
         if !config_dir.exists() {
-            fs::create_dir_all(config_dir)
-                .with_context(|| format!("Failed to create config directory: {}", config_dir.display()))?;
+            fs::create_dir_all(config_dir).with_context(|| {
+                format!(
+                    "Failed to create config directory: {}",
+                    config_dir.display()
+                )
+            })?;
             log::info!("Created config directory: {}", config_dir.display());
         }
 
@@ -154,8 +166,12 @@ impl StatusBarConfig {
         let config_str = toml::to_string_pretty(&config_to_save)
             .context("Failed to serialize status bar config to TOML")?;
 
-        fs::write(&config_path, config_str)
-            .with_context(|| format!("Failed to write status bar config: {}", config_path.display()))?;
+        fs::write(&config_path, config_str).with_context(|| {
+            format!(
+                "Failed to write status bar config: {}",
+                config_path.display()
+            )
+        })?;
 
         log::info!("Saved status bar config to: {}", config_path.display());
         Ok(())
@@ -386,11 +402,16 @@ impl LayoutConfig {
             return Ok(Self::default());
         }
 
-        let config_str = fs::read_to_string(&config_path)
-            .with_context(|| format!("Failed to read layout config at: {}", config_path.display()))?;
+        let config_str = fs::read_to_string(&config_path).with_context(|| {
+            format!("Failed to read layout config at: {}", config_path.display())
+        })?;
 
-        let config: LayoutConfig = toml::from_str(&config_str)
-            .with_context(|| format!("Failed to parse layout config at: {}", config_path.display()))?;
+        let config: LayoutConfig = toml::from_str(&config_str).with_context(|| {
+            format!(
+                "Failed to parse layout config at: {}",
+                config_path.display()
+            )
+        })?;
 
         // Validate and normalize the config
         Ok(config.normalize())
@@ -405,8 +426,12 @@ impl LayoutConfig {
 
         // Create config directory if it doesn't exist
         if !config_dir.exists() {
-            fs::create_dir_all(config_dir)
-                .with_context(|| format!("Failed to create config directory: {}", config_dir.display()))?;
+            fs::create_dir_all(config_dir).with_context(|| {
+                format!(
+                    "Failed to create config directory: {}",
+                    config_dir.display()
+                )
+            })?;
             log::info!("Created config directory: {}", config_dir.display());
         }
 
@@ -432,9 +457,12 @@ impl LayoutConfig {
         let total_height = self.row1.height_pct + self.row2.height_pct + self.row3.height_pct;
         if total_height != 100 {
             // Normalize proportionally
-            self.row1.height_pct = (self.row1.height_pct as u32 * 100 / total_height as u32).min(100) as u16;
-            self.row2.height_pct = (self.row2.height_pct as u32 * 100 / total_height as u32).min(100) as u16;
-            self.row3.height_pct = 100u16.saturating_sub(self.row1.height_pct + self.row2.height_pct);
+            self.row1.height_pct =
+                (self.row1.height_pct as u32 * 100 / total_height as u32).min(100) as u16;
+            self.row2.height_pct =
+                (self.row2.height_pct as u32 * 100 / total_height as u32).min(100) as u16;
+            self.row3.height_pct =
+                100u16.saturating_sub(self.row1.height_pct + self.row2.height_pct);
         }
 
         // Ensure minimum heights (at least 10% each)
@@ -447,7 +475,9 @@ impl LayoutConfig {
         if total > 100 {
             let excess = total - 100;
             // Reduce from the largest row
-            if self.row1.height_pct >= self.row2.height_pct && self.row1.height_pct >= self.row3.height_pct {
+            if self.row1.height_pct >= self.row2.height_pct
+                && self.row1.height_pct >= self.row3.height_pct
+            {
                 self.row1.height_pct = self.row1.height_pct.saturating_sub(excess);
             } else if self.row2.height_pct >= self.row3.height_pct {
                 self.row2.height_pct = self.row2.height_pct.saturating_sub(excess);
@@ -489,7 +519,8 @@ impl LayoutConfig {
                     // Last column gets the remainder to ensure exact 100%
                     col.width_pct = 100u16.saturating_sub(new_total);
                 } else {
-                    col.width_pct = (col.width_pct as u32 * 100 / total_width as u32).min(100) as u16;
+                    col.width_pct =
+                        (col.width_pct as u32 * 100 / total_width as u32).min(100) as u16;
                     new_total += col.width_pct;
                 }
             }
@@ -507,17 +538,26 @@ impl LayoutConfig {
 
     /// Get width constraints for row 1 columns
     pub fn row1_widths(&self) -> Vec<ratatui::layout::Constraint> {
-        self.row1_columns.iter().map(|c| c.width_constraint()).collect()
+        self.row1_columns
+            .iter()
+            .map(|c| c.width_constraint())
+            .collect()
     }
 
     /// Get width constraints for row 2 columns
     pub fn row2_widths(&self) -> Vec<ratatui::layout::Constraint> {
-        self.row2_columns.iter().map(|c| c.width_constraint()).collect()
+        self.row2_columns
+            .iter()
+            .map(|c| c.width_constraint())
+            .collect()
     }
 
     /// Get width constraints for row 3 columns
     pub fn row3_widths(&self) -> Vec<ratatui::layout::Constraint> {
-        self.row3_columns.iter().map(|c| c.width_constraint()).collect()
+        self.row3_columns
+            .iter()
+            .map(|c| c.width_constraint())
+            .collect()
     }
 }
 
@@ -560,7 +600,10 @@ pub fn load_token() -> Result<String> {
 
     match config.github_token {
         Some(token) if !token.is_empty() => {
-            log::info!("GitHub token loaded from config file: {}", config_path.display());
+            log::info!(
+                "GitHub token loaded from config file: {}",
+                config_path.display()
+            );
             Ok(token)
         }
         _ => Err(anyhow::anyhow!(
@@ -578,8 +621,12 @@ pub fn save_token(token: &str) -> Result<()> {
 
     // Create config directory if it doesn't exist
     if !config_dir.exists() {
-        fs::create_dir_all(&config_dir)
-            .with_context(|| format!("Failed to create config directory: {}", config_dir.display()))?;
+        fs::create_dir_all(&config_dir).with_context(|| {
+            format!(
+                "Failed to create config directory: {}",
+                config_dir.display()
+            )
+        })?;
         log::info!("Created config directory: {}", config_dir.display());
     }
 
@@ -587,8 +634,12 @@ pub fn save_token(token: &str) -> Result<()> {
 
     // Load existing config or create new one
     let mut config = if config_path.exists() {
-        let config_str = fs::read_to_string(&config_path)
-            .with_context(|| format!("Failed to read existing config file: {}", config_path.display()))?;
+        let config_str = fs::read_to_string(&config_path).with_context(|| {
+            format!(
+                "Failed to read existing config file: {}",
+                config_path.display()
+            )
+        })?;
         toml::from_str(&config_str).unwrap_or_default()
     } else {
         Config::default()
@@ -598,13 +649,16 @@ pub fn save_token(token: &str) -> Result<()> {
     config.github_token = Some(token.to_string());
 
     // Serialize and write
-    let config_str = toml::to_string_pretty(&config)
-        .context("Failed to serialize config to TOML")?;
+    let config_str =
+        toml::to_string_pretty(&config).context("Failed to serialize config to TOML")?;
 
     fs::write(&config_path, config_str)
         .with_context(|| format!("Failed to write config file: {}", config_path.display()))?;
 
-    log::info!("GitHub token saved to config file: {}", config_path.display());
+    log::info!(
+        "GitHub token saved to config file: {}",
+        config_path.display()
+    );
     Ok(())
 }
 
@@ -642,13 +696,16 @@ pub fn clear_token() -> Result<()> {
 
     config.github_token = None;
 
-    let config_str = toml::to_string_pretty(&config)
-        .context("Failed to serialize config to TOML")?;
+    let config_str =
+        toml::to_string_pretty(&config).context("Failed to serialize config to TOML")?;
 
     fs::write(&config_path, config_str)
         .with_context(|| format!("Failed to write config file: {}", config_path.display()))?;
 
-    log::info!("GitHub token cleared from config file: {}", config_path.display());
+    log::info!(
+        "GitHub token cleared from config file: {}",
+        config_path.display()
+    );
     Ok(())
 }
 
@@ -735,8 +792,11 @@ impl AnimationConfig {
     pub fn load() -> Self {
         match Self::try_load() {
             Ok(config) => {
-                log::info!("Loaded animation config: enabled={}, low_power={}",
-                    config.enabled, config.low_power_mode);
+                log::info!(
+                    "Loaded animation config: enabled={}, low_power={}",
+                    config.enabled,
+                    config.low_power_mode
+                );
                 config
             }
             Err(e) => {
@@ -754,11 +814,19 @@ impl AnimationConfig {
             return Ok(Self::default());
         }
 
-        let config_str = fs::read_to_string(&config_path)
-            .with_context(|| format!("Failed to read animation config at: {}", config_path.display()))?;
+        let config_str = fs::read_to_string(&config_path).with_context(|| {
+            format!(
+                "Failed to read animation config at: {}",
+                config_path.display()
+            )
+        })?;
 
-        let config: AnimationConfig = toml::from_str(&config_str)
-            .with_context(|| format!("Failed to parse animation config at: {}", config_path.display()))?;
+        let config: AnimationConfig = toml::from_str(&config_str).with_context(|| {
+            format!(
+                "Failed to parse animation config at: {}",
+                config_path.display()
+            )
+        })?;
 
         Ok(config)
     }
@@ -772,16 +840,24 @@ impl AnimationConfig {
 
         // Create config directory if it doesn't exist
         if !config_dir.exists() {
-            fs::create_dir_all(config_dir)
-                .with_context(|| format!("Failed to create config directory: {}", config_dir.display()))?;
+            fs::create_dir_all(config_dir).with_context(|| {
+                format!(
+                    "Failed to create config directory: {}",
+                    config_dir.display()
+                )
+            })?;
             log::info!("Created config directory: {}", config_dir.display());
         }
 
-        let config_str = toml::to_string_pretty(self)
-            .context("Failed to serialize animation config to TOML")?;
+        let config_str =
+            toml::to_string_pretty(self).context("Failed to serialize animation config to TOML")?;
 
-        fs::write(&config_path, config_str)
-            .with_context(|| format!("Failed to write animation config: {}", config_path.display()))?;
+        fs::write(&config_path, config_str).with_context(|| {
+            format!(
+                "Failed to write animation config: {}",
+                config_path.display()
+            )
+        })?;
 
         log::info!("Saved animation config to: {}", config_path.display());
         Ok(())
@@ -849,7 +925,10 @@ impl WatchlistConfig {
                 config
             }
             Err(e) => {
-                log::warn!("Failed to load watchlist config: {}. Using empty default.", e);
+                log::warn!(
+                    "Failed to load watchlist config: {}. Using empty default.",
+                    e
+                );
                 Self::default()
             }
         }
@@ -863,11 +942,19 @@ impl WatchlistConfig {
             return Ok(Self::default());
         }
 
-        let config_str = fs::read_to_string(&config_path)
-            .with_context(|| format!("Failed to read watchlist config at: {}", config_path.display()))?;
+        let config_str = fs::read_to_string(&config_path).with_context(|| {
+            format!(
+                "Failed to read watchlist config at: {}",
+                config_path.display()
+            )
+        })?;
 
-        let config: WatchlistConfig = toml::from_str(&config_str)
-            .with_context(|| format!("Failed to parse watchlist config at: {}", config_path.display()))?;
+        let config: WatchlistConfig = toml::from_str(&config_str).with_context(|| {
+            format!(
+                "Failed to parse watchlist config at: {}",
+                config_path.display()
+            )
+        })?;
 
         // Validate all repos are in correct "owner/repo" format
         config.validate_repos()?;
@@ -884,21 +971,33 @@ impl WatchlistConfig {
 
         // Create config directory if it doesn't exist
         if !config_dir.exists() {
-            fs::create_dir_all(config_dir)
-                .with_context(|| format!("Failed to create config directory: {}", config_dir.display()))?;
+            fs::create_dir_all(config_dir).with_context(|| {
+                format!(
+                    "Failed to create config directory: {}",
+                    config_dir.display()
+                )
+            })?;
             log::info!("Created config directory: {}", config_dir.display());
         }
 
         // Validate before saving
         self.validate_repos()?;
 
-        let config_str = toml::to_string_pretty(self)
-            .context("Failed to serialize watchlist config to TOML")?;
+        let config_str =
+            toml::to_string_pretty(self).context("Failed to serialize watchlist config to TOML")?;
 
-        fs::write(&config_path, config_str)
-            .with_context(|| format!("Failed to write watchlist config: {}", config_path.display()))?;
+        fs::write(&config_path, config_str).with_context(|| {
+            format!(
+                "Failed to write watchlist config: {}",
+                config_path.display()
+            )
+        })?;
 
-        log::info!("Saved watchlist config to: {} with {} repos", config_path.display(), self.repos.len());
+        log::info!(
+            "Saved watchlist config to: {} with {} repos",
+            config_path.display(),
+            self.repos.len()
+        );
         Ok(())
     }
 
@@ -951,7 +1050,8 @@ impl WatchlistConfig {
             if name.starts_with('-') || name.ends_with('-') {
                 return false;
             }
-            name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+            name.chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
         }
 
         if !is_valid_github_name(owner) {
@@ -977,7 +1077,10 @@ impl WatchlistConfig {
 
         // Check for duplicates
         if self.repos.contains(&repo) {
-            return Err(anyhow::anyhow!("Repository '{}' is already in watchlist", repo));
+            return Err(anyhow::anyhow!(
+                "Repository '{}' is already in watchlist",
+                repo
+            ));
         }
 
         self.repos.push(repo);
@@ -990,7 +1093,10 @@ impl WatchlistConfig {
         self.repos.retain(|r| r != repo);
 
         if self.repos.len() == initial_len {
-            return Err(anyhow::anyhow!("Repository '{}' not found in watchlist", repo));
+            return Err(anyhow::anyhow!(
+                "Repository '{}' not found in watchlist",
+                repo
+            ));
         }
 
         Ok(())
@@ -1098,13 +1204,17 @@ mod tests {
 
         let toml_str = toml::to_string_pretty(&config).expect("Failed to serialize");
         let mut file = fs::File::create(&config_file).expect("Failed to create file");
-        file.write_all(toml_str.as_bytes()).expect("Failed to write");
+        file.write_all(toml_str.as_bytes())
+            .expect("Failed to write");
 
         // Read back and verify
         let read_content = fs::read_to_string(&config_file).expect("Failed to read");
         let loaded_config: Config = toml::from_str(&read_content).expect("Failed to parse");
 
-        assert_eq!(loaded_config.github_token, Some("ghp_test_token_67890".to_string()));
+        assert_eq!(
+            loaded_config.github_token,
+            Some("ghp_test_token_67890".to_string())
+        );
     }
 
     #[test]
@@ -1162,8 +1272,14 @@ mod tests {
         assert_eq!(StatusBarItem::RateLimit.display_name(), "rate_limit");
         assert_eq!(StatusBarItem::OpenIssues.display_name(), "open_issues");
         assert_eq!(StatusBarItem::OpenPrs.display_name(), "open_prs");
-        assert_eq!(StatusBarItem::LastReleaseAge.display_name(), "last_release_age");
-        assert_eq!(StatusBarItem::OldestIssueAge.display_name(), "oldest_issue_age");
+        assert_eq!(
+            StatusBarItem::LastReleaseAge.display_name(),
+            "last_release_age"
+        );
+        assert_eq!(
+            StatusBarItem::OldestIssueAge.display_name(),
+            "oldest_issue_age"
+        );
     }
 
     #[test]
@@ -1200,7 +1316,8 @@ mod tests {
             ],
         };
 
-        let toml_str = toml::to_string_pretty(&config).expect("Failed to serialize StatusBarConfig");
+        let toml_str =
+            toml::to_string_pretty(&config).expect("Failed to serialize StatusBarConfig");
 
         // Verify all items are in the TOML with snake_case format
         assert!(toml_str.contains("sync_state"));
@@ -1211,7 +1328,8 @@ mod tests {
         assert!(toml_str.contains("oldest_issue_age"));
 
         // Deserialize and verify roundtrip
-        let deserialized: StatusBarConfig = toml::from_str(&toml_str).expect("Failed to deserialize");
+        let deserialized: StatusBarConfig =
+            toml::from_str(&toml_str).expect("Failed to deserialize");
         assert_eq!(config.items, deserialized.items);
     }
 
@@ -1233,14 +1351,13 @@ mod tests {
     #[test]
     fn test_status_bar_config_serde_roundtrip() {
         let config = StatusBarConfig {
-            items: vec![
-                StatusBarItem::OpenIssues,
-                StatusBarItem::LastReleaseAge,
-            ],
+            items: vec![StatusBarItem::OpenIssues, StatusBarItem::LastReleaseAge],
         };
 
-        let toml_str = toml::to_string_pretty(&config).expect("Failed to serialize StatusBarConfig");
-        let deserialized: StatusBarConfig = toml::from_str(&toml_str).expect("Failed to deserialize StatusBarConfig");
+        let toml_str =
+            toml::to_string_pretty(&config).expect("Failed to serialize StatusBarConfig");
+        let deserialized: StatusBarConfig =
+            toml::from_str(&toml_str).expect("Failed to deserialize StatusBarConfig");
 
         assert_eq!(config.items, deserialized.items);
     }
@@ -1400,7 +1517,8 @@ mod tests {
         let config = StatusBarConfig { items: vec![] };
 
         let toml_str = toml::to_string_pretty(&config).expect("Failed to serialize empty config");
-        let deserialized: StatusBarConfig = toml::from_str(&toml_str).expect("Failed to deserialize empty config");
+        let deserialized: StatusBarConfig =
+            toml::from_str(&toml_str).expect("Failed to deserialize empty config");
 
         assert!(deserialized.items.is_empty());
     }
@@ -1535,9 +1653,9 @@ mod tests {
     fn test_layout_config_normalize_minimums() {
         let mut config = LayoutConfig {
             preset: LayoutPreset::Default,
-            row1: PanelLayout::new(100, 5),   // Below minimum
-            row2: PanelLayout::new(100, 5),   // Below minimum
-            row3: PanelLayout::new(100, 90),  // Large
+            row1: PanelLayout::new(100, 5),  // Below minimum
+            row2: PanelLayout::new(100, 5),  // Below minimum
+            row3: PanelLayout::new(100, 90), // Large
             ..Default::default()
         };
 
@@ -1551,10 +1669,7 @@ mod tests {
 
     #[test]
     fn test_layout_config_normalize_columns() {
-        let mut columns = vec![
-            PanelLayout::new(100, 100),
-            PanelLayout::new(100, 100),
-        ];
+        let mut columns = vec![PanelLayout::new(100, 100), PanelLayout::new(100, 100)];
 
         LayoutConfig::normalize_columns(&mut columns);
 
@@ -1585,9 +1700,18 @@ mod tests {
 
         assert_eq!(heights.len(), 3);
         // Default is 40/30/30
-        assert!(matches!(heights[0], ratatui::layout::Constraint::Percentage(40)));
-        assert!(matches!(heights[1], ratatui::layout::Constraint::Percentage(30)));
-        assert!(matches!(heights[2], ratatui::layout::Constraint::Percentage(30)));
+        assert!(matches!(
+            heights[0],
+            ratatui::layout::Constraint::Percentage(40)
+        ));
+        assert!(matches!(
+            heights[1],
+            ratatui::layout::Constraint::Percentage(30)
+        ));
+        assert!(matches!(
+            heights[2],
+            ratatui::layout::Constraint::Percentage(30)
+        ));
     }
 
     #[test]
@@ -1637,7 +1761,7 @@ mod tests {
     #[test]
     fn test_layout_config_minimum_column_width() {
         let mut columns = vec![
-            PanelLayout::new(5, 100),  // Below 10% minimum, gets clamped
+            PanelLayout::new(5, 100), // Below 10% minimum, gets clamped
             PanelLayout::new(95, 100),
         ];
 
@@ -1710,14 +1834,13 @@ height_pct = 100
     #[test]
     fn test_watchlist_config_serde_roundtrip() {
         let config = WatchlistConfig {
-            repos: vec![
-                "torvalds/linux".to_string(),
-                "rust-lang/rust".to_string(),
-            ],
+            repos: vec!["torvalds/linux".to_string(), "rust-lang/rust".to_string()],
         };
 
-        let toml_str = toml::to_string_pretty(&config).expect("Failed to serialize WatchlistConfig");
-        let deserialized: WatchlistConfig = toml::from_str(&toml_str).expect("Failed to deserialize WatchlistConfig");
+        let toml_str =
+            toml::to_string_pretty(&config).expect("Failed to serialize WatchlistConfig");
+        let deserialized: WatchlistConfig =
+            toml::from_str(&toml_str).expect("Failed to deserialize WatchlistConfig");
 
         assert_eq!(config.repos, deserialized.repos);
     }
@@ -1787,14 +1910,20 @@ height_pct = 100
     fn test_validate_repo_format_invalid_no_slash() {
         let result = WatchlistConfig::validate_repo_format("invalid-repo");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("exactly one slash"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exactly one slash"));
     }
 
     #[test]
     fn test_validate_repo_format_invalid_multiple_slashes() {
         let result = WatchlistConfig::validate_repo_format("owner/repo/extra");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("exactly one slash"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exactly one slash"));
     }
 
     #[test]
@@ -1829,14 +1958,20 @@ height_pct = 100
     fn test_validate_repo_format_invalid_leading_hyphen_repo() {
         let result = WatchlistConfig::validate_repo_format("owner/-repo");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("invalid repo name"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("invalid repo name"));
     }
 
     #[test]
     fn test_validate_repo_format_invalid_trailing_hyphen_repo() {
         let result = WatchlistConfig::validate_repo_format("owner/repo-");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("invalid repo name"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("invalid repo name"));
     }
 
     #[test]
@@ -1847,7 +1982,10 @@ height_pct = 100
 
         let result = WatchlistConfig::validate_repo_format("owner/repo@name");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("invalid repo name"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("invalid repo name"));
     }
 
     #[test]
@@ -1892,7 +2030,10 @@ height_pct = 100
         // Try to add duplicate
         let result = config.add_repo("torvalds/linux".to_string());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("already in watchlist"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("already in watchlist"));
 
         assert_eq!(config.repos.len(), 1); // Should still only have one
     }
@@ -1900,10 +2041,7 @@ height_pct = 100
     #[test]
     fn test_watchlist_remove_repo() {
         let mut config = WatchlistConfig {
-            repos: vec![
-                "torvalds/linux".to_string(),
-                "rust-lang/rust".to_string(),
-            ],
+            repos: vec!["torvalds/linux".to_string(), "rust-lang/rust".to_string()],
         };
 
         assert!(config.remove_repo("torvalds/linux").is_ok());
@@ -1930,10 +2068,7 @@ height_pct = 100
 
         // Create config with repos
         let config = WatchlistConfig {
-            repos: vec![
-                "torvalds/linux".to_string(),
-                "rust-lang/rust".to_string(),
-            ],
+            repos: vec!["torvalds/linux".to_string(), "rust-lang/rust".to_string()],
         };
 
         // Save manually
@@ -1968,10 +2103,7 @@ height_pct = 100
     #[test]
     fn test_watchlist_validate_repos_all_valid() {
         let config = WatchlistConfig {
-            repos: vec![
-                "torvalds/linux".to_string(),
-                "rust-lang/rust".to_string(),
-            ],
+            repos: vec!["torvalds/linux".to_string(), "rust-lang/rust".to_string()],
         };
 
         assert!(config.validate_repos().is_ok());
@@ -1980,15 +2112,15 @@ height_pct = 100
     #[test]
     fn test_watchlist_validate_repos_with_invalid() {
         let config = WatchlistConfig {
-            repos: vec![
-                "torvalds/linux".to_string(),
-                "invalid-repo".to_string(),
-            ],
+            repos: vec!["torvalds/linux".to_string(), "invalid-repo".to_string()],
         };
 
         let result = config.validate_repos();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("exactly one slash"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exactly one slash"));
     }
 
     #[test]
@@ -2024,9 +2156,7 @@ height_pct = 100
 
     #[test]
     fn test_watchlist_many_repos() {
-        let repos: Vec<String> = (0..10)
-            .map(|i| format!("owner{}/repo{}", i, i))
-            .collect();
+        let repos: Vec<String> = (0..10).map(|i| format!("owner{}/repo{}", i, i)).collect();
 
         let config = WatchlistConfig { repos };
 

@@ -50,20 +50,14 @@ impl App {
         // Check if we're showing subcommand options (e.g., after typing ":theme ")
         if input.starts_with(":theme ") || input == ":theme" {
             let themes = self.get_available_themes();
-            self.command_suggestions = themes
-                .iter()
-                .map(|t| format!(":theme {}", t))
-                .collect();
+            self.command_suggestions = themes.iter().map(|t| format!(":theme {}", t)).collect();
             self.command_selected_suggestion = 0;
             return;
         }
 
         if input.starts_with(":layout ") || input == ":layout" {
             let layouts = self.get_available_layouts();
-            self.command_suggestions = layouts
-                .iter()
-                .map(|l| format!(":layout {}", l))
-                .collect();
+            self.command_suggestions = layouts.iter().map(|l| format!(":layout {}", l)).collect();
             self.command_selected_suggestion = 0;
             return;
         }
@@ -75,7 +69,10 @@ impl App {
             self.command_suggestions = available_commands;
         } else {
             // Normalize input: if user types "quit", also match ":quit"
-            let normalized_input = if !input.starts_with(':') && !input.starts_with("theme ") && !input.starts_with("layout ") {
+            let normalized_input = if !input.starts_with(':')
+                && !input.starts_with("theme ")
+                && !input.starts_with("layout ")
+            {
                 format!(":{}", input)
             } else {
                 input.clone()
@@ -144,8 +141,13 @@ impl App {
             // Autocomplete the command itself
             let suggestion = &self.command_suggestions[self.command_selected_suggestion];
             // If suggestion has a placeholder like <name>, strip it and just use the base command
-            let autocompleted = if suggestion.contains("<name>") || suggestion.contains("<preset>") {
-                suggestion.split_whitespace().next().unwrap_or(suggestion).to_string()
+            let autocompleted = if suggestion.contains("<name>") || suggestion.contains("<preset>")
+            {
+                suggestion
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or(suggestion)
+                    .to_string()
             } else {
                 suggestion.clone()
             };
@@ -210,8 +212,10 @@ impl App {
     /// Check if we're currently showing subcommand options (theme or layout choices)
     pub(super) fn is_showing_subcommand_options(&self) -> bool {
         let input = self.command_input.trim().to_lowercase();
-        input == ":theme" || input.starts_with(":theme ")
-            || input == ":layout" || input.starts_with(":layout ")
+        input == ":theme"
+            || input.starts_with(":theme ")
+            || input == ":layout"
+            || input.starts_with(":layout ")
     }
 
     /// Execute the current command and return an optional AppAction
@@ -222,8 +226,10 @@ impl App {
         // command that expects a subcommand argument (e.g. ":theme" or ":layout"
         // without a specific value).
         let input_lower = input.to_lowercase();
-        let is_base_command = input_lower == ":theme" || input_lower == ":layout"
-            || input_lower == "theme" || input_lower == "layout";
+        let is_base_command = input_lower == ":theme"
+            || input_lower == ":layout"
+            || input_lower == "theme"
+            || input_lower == "layout";
         if (input.is_empty() || is_base_command) && !self.command_suggestions.is_empty() {
             input = self.command_suggestions[self.command_selected_suggestion].trim();
         }
@@ -298,7 +304,12 @@ impl App {
                     "default" => crate::core::config::LayoutPreset::Default,
                     "compact" => crate::core::config::LayoutPreset::Compact,
                     "wide" => crate::core::config::LayoutPreset::Wide,
-                    _ => return Err(anyhow::anyhow!("Unknown layout: {}. Available: default, compact, wide", layout_name)),
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "Unknown layout: {}. Available: default, compact, wide",
+                            layout_name
+                        ))
+                    }
                 };
                 self.layout_config.reset_to_preset(preset);
                 self.layout_config.save()?;
@@ -358,7 +369,10 @@ impl App {
 
         // Render suggestions
         let suggestions_block = Block::bordered()
-            .title(format!(" Suggestions ({}) ", self.command_suggestions.len()))
+            .title(format!(
+                " Suggestions ({}) ",
+                self.command_suggestions.len()
+            ))
             .title_alignment(Alignment::Center)
             .border_style(Style::default().fg(self.theme.border_unselected_color()));
 
@@ -397,7 +411,8 @@ impl App {
         frame.render_widget(paragraph, inner_area);
 
         // Render help text
-        let help_text = "Tab: autocomplete | ↑/↓: select | Ctrl+↑/↓: history | Enter: execute | Esc: close";
+        let help_text =
+            "Tab: autocomplete | ↑/↓: select | Ctrl+↑/↓: history | Enter: execute | Esc: close";
         let help_paragraph = Paragraph::new(help_text)
             .alignment(Alignment::Center)
             .fg(self.theme.text_secondary_color());
