@@ -15,7 +15,7 @@ rust-version = "1.74"
 name = "forgeStat"
 path = "src/main.rs"
 
-[package.metadata.dist]
+[workspace.metadata.dist]
 installers = ["shell", "powershell", "msi"]
 targets = [
     "x86_64-pc-windows-msvc",

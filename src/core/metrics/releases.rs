@@ -132,7 +132,7 @@ mod tests {
         let reference_time = Utc::now();
 
         // Create releases: most recent (5 days ago), then 15, 25, 35 days ago
-        let releases = vec![
+        let releases = [
             create_test_release_with_time("v1.4.0", "Release 4", reference_time, 5),
             create_test_release_with_time("v1.3.0", "Release 3", reference_time, 15),
             create_test_release_with_time("v1.2.0", "Release 2", reference_time, 25),
@@ -179,7 +179,7 @@ mod tests {
         let reference_time = Utc::now();
 
         // Create releases: 10 days apart
-        let releases = vec![
+        let releases = [
             create_test_release_with_time("v1.1.0", "Second Release", reference_time, 10),
             create_test_release_with_time("v1.0.0", "First Release", reference_time, 20),
         ];

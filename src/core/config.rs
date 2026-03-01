@@ -189,21 +189,16 @@ pub fn statusbar_file_path() -> Result<PathBuf> {
 // =============================================================================
 
 /// Layout preset names
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum LayoutPreset {
     /// Default balanced layout
+    #[default]
     Default,
     /// Compact layout with smaller panels
     Compact,
     /// Wide layout emphasizing certain panels
     Wide,
-}
-
-impl Default for LayoutPreset {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 /// Individual panel size configuration
