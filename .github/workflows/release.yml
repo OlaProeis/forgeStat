@@ -1,5 +1,8 @@
 # GitHub Actions workflow for releasing forgeStat
-# Uses cargo-dist for building cross-platform binaries
+# Uses cargo-dist for building cross-platform binaries and installers
+#
+# Trigger with: git tag v0.1.0 && git push origin v0.1.0
+# Or: gh workflow run release.yml --field tag=v0.1.0
 
 name: Release
 
@@ -46,15 +49,29 @@ jobs:
         id: plan
         shell: bash
         run: |
-          cargo dist host --steps=upload --steps=release --output-format=json "${{ github.ref }}" > dist-manifest.json
-          echo "dist-manifest.json:"
-          cat dist-manifest.json
-          
-          # Read the manifest
-          DIST_TAG=$(jq -r '.announcement_tag' dist-manifest.json)
-          DIST_VERSION=$(jq -r '.announcement_title' dist-manifest.json)
-          HAS_RELEASES=$(jq '.releases | length' dist-manifest.json)
-          
+          # Use the provided tag for workflow_dispatch, or github.ref for push
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            REF="refs/tags/${{ github.event.inputs.tag }}"
+          else
+            REF="${{ github.ref }}"
+          fi
+
+          cargo dist host --steps=upload --steps=release --output-format=json "$REF" > dist-manifest.json || true
+
+          # If cargo-dist plan fails, we'll still proceed with manual build
+          if [ -f dist-manifest.json ]; then
+            echo "dist-manifest.json:"
+            cat dist-manifest.json
+            DIST_TAG=$(jq -r '.announcement_tag // empty' dist-manifest.json)
+            DIST_VERSION=$(jq -r '.announcement_title // empty' dist-manifest.json)
+            HAS_RELEASES=$(jq '.releases | length' dist-manifest.json 2>/dev/null || echo "0")
+          else
+            # Extract tag from REF
+            DIST_TAG="${REF#refs/tags/}"
+            DIST_VERSION="${DIST_TAG}"
+            HAS_RELEASES="1"
+          fi
+
           echo "tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$DIST_VERSION" >> "$GITHUB_OUTPUT"
           echo "has-releases=$HAS_RELEASES" >> "$GITHUB_OUTPUT"
@@ -64,28 +81,41 @@ jobs:
         with:
           name: dist-plan
           path: dist-manifest.json
+        if: always()
 
-  # Build binaries for all targets
+  # Build binaries and installers for all targets
   build:
-    name: Build Binaries
+    name: Build (${{ matrix.target }})
     needs: plan
     if: ${{ needs.plan.outputs.has-releases != '0' }}
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Linux builds
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            install_target: true
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
+            install_target: true
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
+            install_target: true
+
+          # macOS builds
           - target: x86_64-apple-darwin
             os: macos-latest
+            install_target: true
           - target: aarch64-apple-darwin
             os: macos-latest
+            install_target: true
+
+          # Windows builds - MSI generation
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+            install_target: false
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -94,16 +124,69 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.install_target && matrix.target || '' }}
 
       - name: Install cargo-dist
         uses: taiki-e/install-action@cargo-dist
 
-      - name: Build release binary
+      # Install cross-compilation tools for Linux ARM
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      # Install musl tools for static Linux builds
+      - name: Install musl tools
+        if: contains(matrix.target, 'musl')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Build release
         shell: bash
         run: |
-          cargo dist build --artifacts=local --target=${{ matrix.target }} --output-format=json > dist-manifest.json
-          cat dist-manifest.json
+          # For Windows, use cargo-wix for MSI generation if available
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            # Install cargo-wix for MSI generation
+            cargo install cargo-wix --force || true
+          fi
+
+          # Build with cargo-dist
+          cargo dist build --artifacts=local --target=${{ matrix.target }} --output-format=json > dist-manifest.json || true
+
+          # Fallback: manual build if cargo-dist fails
+          if [ ! -d "target/dist" ]; then
+            echo "cargo-dist build failed, using manual build..."
+            cargo build --release --target ${{ matrix.target }}
+            mkdir -p target/dist
+
+            # Package based on OS
+            if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+              # Create zip for Windows
+              cd target/${{ matrix.target }}/release
+              7z a -tzip ../../../target/dist/forgeStat-${{ needs.plan.outputs.tag }}-${{ matrix.target }}.zip forgeStat.exe
+              cd ../../..
+
+              # Try to create MSI if cargo-wix is available
+              if cargo wix --help >/dev/null 2>&1; then
+                echo "Creating MSI installer..."
+                cargo wix --no-build --target ${{ matrix.target }} -o target/dist/ || true
+                # Rename MSI to include version
+                if [ -f "target/dist/forgeStat-${{ matrix.target }}.msi" ]; then
+                  mv "target/dist/forgeStat-${{ matrix.target }}.msi" "target/dist/forgeStat-${{ needs.plan.outputs.tag }}-${{ matrix.target }}.msi"
+                fi
+              fi
+            else
+              # Create tar.gz for Unix
+              cd target/${{ matrix.target }}/release
+              tar czf ../../../target/dist/forgeStat-${{ needs.plan.outputs.tag }}-${{ matrix.target }}.tar.gz forgeStat
+              cd ../../..
+            fi
+          fi
+
+          echo "Contents of target/dist:"
+          ls -la target/dist/ || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -112,11 +195,237 @@ jobs:
           path: |
             target/dist/
             dist-manifest.json
+        if: always()
 
-  # Create GitHub Release and upload artifacts
+  # Create shell installer scripts (universal - runs once)
+  build-installers:
+    name: Build Installers
+    needs: plan
+    runs-on: ubuntu-latest
+    if: ${{ needs.plan.outputs.has-releases != '0' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create install.sh
+        shell: bash
+        run: |
+          mkdir -p target/dist
+
+          # Create install.sh that downloads from GitHub releases
+          cat > target/dist/install.sh << 'SCRIPT'
+          #!/bin/bash
+          # forgeStat Installer Script
+          # Downloads and installs forgeStat from GitHub releases
+
+          set -euo pipefail
+
+          REPO="OlaProeis/forgeStat"
+          BINARY_NAME="forgeStat"
+          INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+
+          # Colors
+          RED='\033[0;31m'
+          GREEN='\033[0;32m'
+          YELLOW='\033[1;33m'
+          BLUE='\033[0;34m'
+          NC='\033[0m'
+
+          info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+          success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+          warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+          error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+          detect_platform() {
+            local os arch
+            case "$(uname -s)" in
+              Linux*) os="linux";;
+              Darwin*) os="macos";;
+              *) error "Unsupported OS: $(uname -s)"; exit 1;;
+            esac
+
+            case "$(uname -m)" in
+              x86_64|amd64) arch="x86_64";;
+              arm64|aarch64) arch="aarch64";;
+              *) error "Unsupported architecture: $(uname -m)"; exit 1;;
+            esac
+
+            if [ "$os" = "linux" ]; then
+              echo "${arch}-unknown-linux-gnu"
+            else
+              echo "${arch}-apple-darwin"
+            fi
+          }
+
+          main() {
+            info "forgeStat Installer"
+            info "==================="
+
+            local platform
+            platform=$(detect_platform)
+            info "Detected platform: $platform"
+
+            # Get latest release
+            local version
+            version=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            if [ -z "$version" ]; then
+              error "Failed to get latest version"
+              exit 1
+            fi
+            info "Latest version: $version"
+
+            # Download URL
+            local url
+            url="https://github.com/$REPO/releases/download/${version}/forgeStat-${version}-${platform}.tar.gz"
+            info "Downloading from: $url"
+
+            # Create temp directory
+            local tmpdir
+            tmpdir=$(mktemp -d)
+            trap "rm -rf $tmpdir" EXIT
+
+            # Download
+            if command -v curl &>/dev/null; then
+              curl -fsSL "$url" -o "$tmpdir/forgeStat.tar.gz"
+            elif command -v wget &>/dev/null; then
+              wget -q "$url" -O "$tmpdir/forgeStat.tar.gz"
+            else
+              error "curl or wget is required"
+              exit 1
+            fi
+
+            # Extract
+            info "Extracting..."
+            tar -xzf "$tmpdir/forgeStat.tar.gz" -C "$tmpdir"
+
+            # Install
+            info "Installing to $INSTALL_DIR..."
+            mkdir -p "$INSTALL_DIR"
+            cp "$tmpdir/forgeStat" "$INSTALL_DIR/"
+            chmod +x "$INSTALL_DIR/forgeStat"
+
+            success "forgeStat installed to $INSTALL_DIR/forgeStat"
+
+            # Check if in PATH
+            if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+              warning "$INSTALL_DIR is not in your PATH"
+              info "Add this to your shell profile:"
+              echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
+            else
+              success "Installation complete! Run 'forgeStat --version' to verify."
+            fi
+          }
+
+          main "$@"
+          SCRIPT
+
+          chmod +x target/dist/install.sh
+
+      - name: Create install.ps1
+        shell: bash
+        run: |
+          cat > target/dist/install.ps1 << 'SCRIPT'
+          # forgeStat Windows Installer
+          # Downloads and installs forgeStat from GitHub releases
+
+          $ErrorActionPreference = "Stop"
+
+          $Repo = "OlaProeis/forgeStat"
+          $BinaryName = "forgeStat"
+          $InstallDir = "$env:LOCALAPPDATA\$BinaryName"
+
+          function Write-Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Cyan }
+          function Write-Success($msg) { Write-Host "[SUCCESS] $msg" -ForegroundColor Green }
+          function Write-Error($msg) { Write-Host "[ERROR] $msg" -ForegroundColor Red }
+
+          function Get-Architecture {
+            switch ($env:PROCESSOR_ARCHITECTURE) {
+              "AMD64" { return "x86_64-pc-windows-msvc" }
+              "ARM64" { return "aarch64-pc-windows-msvc" }
+              default {
+                Write-Error "Unsupported architecture: $env:PROCESSOR_ARCHITECTURE"
+                exit 1
+              }
+            }
+          }
+
+          Write-Info "forgeStat Windows Installer"
+          Write-Info "==========================="
+
+          # Detect architecture
+          $arch = Get-Architecture
+          Write-Info "Detected: $arch"
+
+          # Get latest release
+          try {
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest"
+            $version = $release.tag_name
+          } catch {
+            Write-Error "Failed to get latest release: $_"
+            exit 1
+          }
+          Write-Info "Latest version: $version"
+
+          # Download URL - prefer MSI, fallback to zip
+          $msiUrl = "https://github.com/$Repo/releases/download/$version/forgeStat-$version-$arch.msi"
+          $zipUrl = "https://github.com/$Repo/releases/download/$version/forgeStat-$version-$arch.zip"
+
+          # Create temp directory
+          $tempDir = Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString())
+          New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+
+          # Try MSI first
+          $msiPath = Join-Path $tempDir "forgeStat.msi"
+          try {
+            Write-Info "Downloading MSI from $msiUrl..."
+            Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -ErrorAction Stop
+            Write-Info "Installing MSI..."
+            Start-Process msiexec.exe -ArgumentList "/i", "`"$msiPath`"", "/quiet", "/norestart" -Wait
+            Write-Success "Installation complete!"
+            exit 0
+          } catch {
+            Write-Info "MSI not available or installation failed, trying ZIP..."
+          }
+
+          # Fallback to ZIP
+          $zipPath = Join-Path $tempDir "forgeStat.zip"
+          try {
+            Write-Info "Downloading from $zipUrl..."
+            Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+
+            Write-Info "Extracting..."
+            Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
+
+            Write-Info "Installing to $InstallDir..."
+            New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+            Copy-Item -Path (Join-Path $tempDir "forgeStat.exe") -Destination $InstallDir -Force
+
+            # Add to PATH
+            $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+            if ($userPath -notlike "*$InstallDir*") {
+              [Environment]::SetEnvironmentVariable("PATH", "$userPath;$InstallDir", "User")
+              Write-Info "Added to PATH. Restart your terminal to use forgeStat."
+            }
+
+            Write-Success "Installation complete! Run 'forgeStat --version' to verify."
+          } catch {
+            Write-Error "Installation failed: $_"
+            exit 1
+          } finally {
+            Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          SCRIPT
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-installers
+          path: target/dist/
+
+  # Create GitHub Release and upload all artifacts
   release:
-    name: Create Release
-    needs: [plan, build]
+    name: Create GitHub Release
+    needs: [plan, build, build-installers]
     runs-on: ubuntu-latest
     if: ${{ needs.plan.outputs.has-releases != '0' }}
     steps:
@@ -129,191 +438,108 @@ jobs:
           path: artifacts/
           pattern: dist-*
 
-      - name: Install cargo-dist
-        uses: taiki-e/install-action@cargo-dist
-
-      - name: Generate checksums
-        shell: bash
+      - name: List artifacts
         run: |
-          mkdir -p checksums
-          cd artifacts
-          for dir in dist-*/; do
-            if [ -d "$dir/target/dist" ]; then
-              for file in "$dir/target/dist"/*; do
-                if [ -f "$file" ]; then
-                  sha256sum "$file" >> ../checksums/SHA256SUMS
-                fi
-              done
-            fi
-          done
-          cat checksums/SHA256SUMS
+          echo "Downloaded artifacts:"
+          find artifacts -type f -name "*" | head -50
 
-      - name: Create release
+      - name: Create release and upload assets
         shell: bash
         run: |
           tag="${{ needs.plan.outputs.tag }}"
           version="${{ needs.plan.outputs.version }}"
-          
-          # Create or update release
-          if gh release view "$tag" &>/dev/null; then
-            echo "Release $tag already exists, uploading artifacts..."
-          else
-            echo "Creating release $tag..."
+
+          echo "Creating release for $tag..."
+
+          # Create release
+          if ! gh release view "$tag" &>/dev/null; then
             gh release create "$tag" \
-              --title "$version" \
-              --generate-notes \
-              --draft=false \
-              --prerelease=false
+              --title "forgeStat $version" \
+              --notes-file - << EOF
+          ## Quick Install
+
+          ### Windows (PowerShell - One Line)
+          \`\`\`powershell
+          iwr https://github.com/OlaProeis/forgeStat/releases/download/${tag}/install.ps1 -UseBasicParsing | iex
+          \`\`\`
+
+          ### macOS/Linux (Shell - One Line)
+          \`\`\`bash
+          curl -fsSL https://github.com/OlaProeis/forgeStat/releases/download/${tag}/install.sh | bash
+          \`\`\`
+
+          ### Download Manually
+          - **Windows**: Download and run the MSI or extract the ZIP
+          - **macOS/Linux**: Download and extract the tar.gz
+
+          ### Cargo Install
+          \`\`\`bash
+          cargo install forgeStat
+          \`\`\`
+
+          ## Release Assets
+          EOF
           fi
-          
-          # Upload all artifacts
+
+          # Collect and upload all artifacts
           for dir in artifacts/dist-*/; do
-            if [ -d "$dir/target/dist" ]; then
-              for file in "$dir/target/dist"/*; do
+            if [ -d "$dir" ]; then
+              for file in "$dir"/*; do
                 if [ -f "$file" ]; then
-                  echo "Uploading $file..."
+                  echo "Uploading $(basename $file)..."
                   gh release upload "$tag" "$file" --clobber
                 fi
               done
             fi
           done
-          
-          # Upload checksums
-          if [ -f checksums/SHA256SUMS ]; then
-            gh release upload "$tag" checksums/SHA256SUMS --clobber
-          fi
+
+          # Create checksums file
+          echo "## SHA256 Checksums" >> checksums.txt
+          echo "" >> checksums.txt
+          for dir in artifacts/dist-*/; do
+            if [ -d "$dir" ]; then
+              for file in "$dir"/*; do
+                if [ -f "$file" ] && [ "$(basename $file)" != "dist-manifest.json" ]; then
+                  sha256sum "$file" | awk '{print $1 "  " $2}' >> checksums.txt
+                fi
+              done
+            fi
+          done
+          gh release upload "$tag" checksums.txt --clobber || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Publish to crates.io
-  publish-crates:
-    name: Publish to crates.io
-    needs: [plan, build, release]
-    runs-on: ubuntu-latest
-    if: ${{ needs.plan.outputs.has-releases != '0' && !contains(needs.plan.outputs.tag, '-') }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Publish to crates.io
-        shell: bash
-        run: |
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-  # Update Homebrew formula (macOS/Linux)
-  update-homebrew:
-    name: Update Homebrew Formula
-    needs: [plan, release]
-    runs-on: ubuntu-latest
-    if: ${{ needs.plan.outputs.has-releases != '0' && !contains(needs.plan.outputs.tag, '-') }}
-    steps:
-      - name: Checkout homebrew-tap repository
-        uses: actions/checkout@v4
-        with:
-          repository: olaproeis/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: homebrew-tap
-
-      - name: Update formula
-        shell: bash
-        run: |
-          tag="${{ needs.plan.outputs.tag }}"
-          version="${tag#v}"
-          
-          cd homebrew-tap
-          
-          # Download macOS Intel binary and get SHA256
-          mac_intel_url="https://github.com/${{ github.repository }}/releases/download/${tag}/forgeStat-${tag}-x86_64-apple-darwin.tar.gz"
-          curl -L -o mac_intel.tar.gz "$mac_intel_url"
-          mac_intel_sha=$(sha256sum mac_intel.tar.gz | cut -d' ' -f1)
-          
-          # Download macOS ARM binary and get SHA256
-          mac_arm_url="https://github.com/${{ github.repository }}/releases/download/${tag}/forgeStat-${tag}-aarch64-apple-darwin.tar.gz"
-          curl -L -o mac_arm.tar.gz "$mac_arm_url"
-          mac_arm_sha=$(sha256sum mac_arm.tar.gz | cut -d' ' -f1)
-          
-          # Download Linux binary and get SHA256
-          linux_url="https://github.com/${{ github.repository }}/releases/download/${tag}/forgeStat-${tag}-x86_64-unknown-linux-gnu.tar.gz"
-          curl -L -o linux.tar.gz "$linux_url"
-          linux_sha=$(sha256sum linux.tar.gz | cut -d' ' -f1)
-          
-          # Update formula
-          cat > Formula/forgeStat.rb << EOF
-          class ForgeStat < Formula
-            desc "A real-time GitHub repository dashboard for your terminal"
-            homepage "https://github.com/${{ github.repository }}"
-            version "${version}"
-            license "MIT"
-
-            if Hardware::CPU.arm?
-              url "${mac_arm_url}"
-              sha256 "${mac_arm_sha}"
-            else
-              url "${mac_intel_url}"
-              sha256 "${mac_intel_sha}"
-            end
-
-            def install
-              bin.install "forgeStat"
-            end
-
-            test do
-              system "#{bin}/forgeStat", "--version"
-            end
-          end
-          EOF
-          
-          # Commit and push
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add Formula/forgeStat.rb
-          git commit -m "Update forgeStat to ${version}"
-          git push
-
-  # Announce release
-  announce:
-    name: Announce Release
+  # Quick summary for judges
+  summary:
+    name: Release Summary
     needs: [plan, release]
     runs-on: ubuntu-latest
     if: ${{ needs.plan.outputs.has-releases != '0' }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Create release summary
-        shell: bash
+      - name: Generate summary
         run: |
           tag="${{ needs.plan.outputs.tag }}"
-          version="${{ needs.plan.outputs.version }}"
-          
-          echo "# forgeStat $version Released! 🎉" >> $GITHUB_STEP_SUMMARY
+
+          echo "# forgeStat ${{ needs.plan.outputs.version }} Released! 🎉" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Installation" >> $GITHUB_STEP_SUMMARY
+          echo "## Quick Install for Judges" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### macOS/Linux (Homebrew)" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "brew tap olaproeis/tap" >> $GITHUB_STEP_SUMMARY
-          echo "brew install forgeStat" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "### Windows" >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`powershell' >> $GITHUB_STEP_SUMMARY
+          echo "iwr https://github.com/OlaProeis/forgeStat/releases/download/${tag}/install.ps1 -UseBasicParsing | iex" >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Windows (PowerShell)" >> $GITHUB_STEP_SUMMARY
-          echo '```powershell' >> $GITHUB_STEP_SUMMARY
-          echo "iwr https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.ps1 -UseBasicParsing | iex" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "Or download the MSI from: https://github.com/OlaProeis/forgeStat/releases/tag/${tag}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Linux/macOS (Shell)" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "### macOS" >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`bash' >> $GITHUB_STEP_SUMMARY
+          echo "curl -fsSL https://github.com/OlaProeis/forgeStat/releases/download/${tag}/install.sh | bash" >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Cargo" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "cargo install forgeStat" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "### Linux" >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`bash' >> $GITHUB_STEP_SUMMARY
+          echo "curl -fsSL https://github.com/OlaProeis/forgeStat/releases/download/${tag}/install.sh | bash" >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Release Assets" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- [View Release](https://github.com/${{ github.repository }}/releases/tag/${tag})" >> $GITHUB_STEP_SUMMARY
+          echo "## Release Page" >> $GITHUB_STEP_SUMMARY
+          echo "https://github.com/OlaProeis/forgeStat/releases/tag/${tag}" >> $GITHUB_STEP_SUMMARY

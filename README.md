@@ -173,45 +173,49 @@ While waiting for large repos to load, press `Space` or `Enter` to play Pong:
 
 ## Installation
 
-### macOS/Linux (Homebrew)
+### Quick Install (One Command)
+
+#### Windows (PowerShell)
+
+```powershell
+iwr https://github.com/OlaProeis/forgeStat/releases/latest/download/install.ps1 -UseBasicParsing | iex
+```
+
+Or download the [MSI installer](https://github.com/OlaProeis/forgeStat/releases/latest) and run it.
+
+#### macOS
+
+```bash
+curl -fsSL https://github.com/OlaProeis/forgeStat/releases/latest/download/install.sh | bash
+```
+
+#### Linux
+
+```bash
+curl -fsSL https://github.com/OlaProeis/forgeStat/releases/latest/download/install.sh | bash
+```
+
+### Homebrew (macOS/Linux)
 
 ```bash
 brew tap olaproeis/tap
 brew install forgeStat
 ```
 
-### Windows (PowerShell)
-
-```powershell
-iwr https://raw.githubusercontent.com/olaproeis/forgeStat/main/scripts/install.ps1 -UseBasicParsing | iex
-```
-
-Or download and run manually:
-
-```powershell
-# Download the installer
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/olaproeis/forgeStat/main/scripts/install.ps1 -OutFile install.ps1
-
-# Run the installer
-.\install.ps1
-```
-
-### Linux/macOS (Shell)
+### Cargo Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/olaproeis/forgeStat/main/scripts/install.sh | bash
+cargo install forgeStat
 ```
 
-Or download and run manually:
+### Manual Download
 
-```bash
-# Download the installer
-curl -fsSL https://raw.githubusercontent.com/olaproeis/forgeStat/main/scripts/install.sh -o install.sh
+Download pre-built binaries from the [releases page](https://github.com/OlaProeis/forgeStat/releases):
 
-# Make it executable and run
-chmod +x install.sh
-./install.sh
-```
+- **Windows**: `forgeStat-v0.1.0-x86_64-pc-windows-msvc.msi` (installer) or `.zip`
+- **macOS Intel**: `forgeStat-v0.1.0-x86_64-apple-darwin.tar.gz`
+- **macOS Apple Silicon**: `forgeStat-v0.1.0-aarch64-apple-darwin.tar.gz`
+- **Linux**: `forgeStat-v0.1.0-x86_64-unknown-linux-gnu.tar.gz`
 
 ### Cargo
 
