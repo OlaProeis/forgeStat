@@ -125,14 +125,14 @@ impl App {
         let input = self.command_input.trim().to_lowercase();
 
         // Check if we're autocompleting a theme or layout argument
-        if input.starts_with(":theme ") {
-            let partial = input[7..].trim().to_lowercase();
+        if let Some(partial) = input.strip_prefix(":theme ") {
+            let partial = partial.trim().to_lowercase();
             let themes = self.get_available_themes();
             if let Some(theme) = themes.iter().find(|t| t.starts_with(&partial)) {
                 self.command_input = format!(":theme {}", theme);
             }
-        } else if input.starts_with(":layout ") {
-            let partial = input[8..].trim().to_lowercase();
+        } else if let Some(partial) = input.strip_prefix(":layout ") {
+            let partial = partial.trim().to_lowercase();
             let layouts = self.get_available_layouts();
             if let Some(layout) = layouts.iter().find(|l| l.starts_with(&partial)) {
                 self.command_input = format!(":layout {}", layout);
@@ -265,13 +265,13 @@ impl App {
         match command.as_str() {
             ":refresh" => {
                 log::info!("Command palette: refresh");
-                return Ok(Some(AppAction::Refresh));
+                Ok(Some(AppAction::Refresh))
             }
             ":export" => {
                 log::info!("Command palette: export");
                 // TODO: Implement export functionality
                 self.show_toast("Export not yet implemented".to_string());
-                return Ok(None);
+                Ok(None)
             }
             ":theme" => {
                 if parts.len() < 2 || parts[1].starts_with('<') {
@@ -289,7 +289,7 @@ impl App {
                 } else {
                     return Err(anyhow::anyhow!("Unknown theme: {}. Available: default, monochrome, high-contrast, solarized-dark, dracula, gruvbox", theme_name));
                 }
-                return Ok(None);
+                Ok(None)
             }
             ":layout" => {
                 if parts.len() < 2 || parts[1].starts_with('<') {
@@ -314,25 +314,25 @@ impl App {
                 self.layout_config.reset_to_preset(preset);
                 self.layout_config.save()?;
                 self.show_toast(format!("Layout changed to: {}", layout_name));
-                return Ok(None);
+                Ok(None)
             }
             ":set-token" => {
                 log::info!("Command palette: set-token");
                 self.exit_command_palette();
                 self.toggle_token_input();
-                return Ok(None);
+                Ok(None)
             }
             ":quit" | ":q" => {
                 log::info!("Command palette: quit");
-                return Ok(Some(AppAction::Quit));
+                Ok(Some(AppAction::Quit))
             }
             ":help" => {
                 log::info!("Command palette: help");
                 self.show_help = true;
-                return Ok(None);
+                Ok(None)
             }
             _ => {
-                return Err(anyhow::anyhow!("Unknown command: {}. Try :refresh, :export, :theme <name>, :layout <preset>, :set-token, :quit, :help", input));
+                Err(anyhow::anyhow!("Unknown command: {}. Try :refresh, :export, :theme <name>, :layout <preset>, :set-token, :quit, :help", input))
             }
         }
     }

@@ -12,19 +12,11 @@ impl App {
 
         // Check for double-click
         let now = Instant::now();
-        let is_double_click = self.last_click_time.map_or(false, |last_time| {
+        let is_double_click = self.last_click_time.is_some_and(|last_time| {
             let time_ok = now.duration_since(last_time) <= DOUBLE_CLICK_THRESHOLD;
-            let pos_ok = self.last_click_pos.map_or(false, |(last_x, last_y)| {
-                let dx = if column > last_x {
-                    column - last_x
-                } else {
-                    last_x - column
-                };
-                let dy = if row > last_y {
-                    row - last_y
-                } else {
-                    last_y - row
-                };
+            let pos_ok = self.last_click_pos.is_some_and(|(last_x, last_y)| {
+                let dx = column.abs_diff(last_x);
+                let dy = row.abs_diff(last_y);
                 dx <= DOUBLE_CLICK_DISTANCE && dy <= DOUBLE_CLICK_DISTANCE
             });
             time_ok && pos_ok
@@ -145,7 +137,7 @@ impl App {
             return;
         }
 
-        let delta_pct = delta_x as i32;
+        let delta_pct = delta_x;
 
         let (left_idx, right_idx) = match border_index {
             0 => (0, 1),
@@ -165,7 +157,7 @@ impl App {
 
         let total = new_left + new_right;
         let normalized_left = (new_left * 100 / total) as u16;
-        let normalized_right = (100 - normalized_left) as u16;
+        let normalized_right = 100 - normalized_left;
 
         columns[left_idx].width_pct = normalized_left;
         columns[right_idx].width_pct = normalized_right;
@@ -185,24 +177,15 @@ impl App {
             _ => return,
         };
 
-        let delta_pct = delta_y as i32;
+        let delta_pct = delta_y;
 
         let current_top = row1_ref.height_pct as i32;
         let current_bottom = row2_ref.height_pct as i32;
 
-        let (new_top, new_bottom) = if border_index == 0 {
-            let new_top = (current_top + delta_pct)
-                .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
-            let new_bottom = (current_bottom - delta_pct)
-                .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
-            (new_top, new_bottom)
-        } else {
-            let new_mid = (current_top + delta_pct)
-                .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
-            let new_bottom = (current_bottom - delta_pct)
-                .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
-            (new_mid, new_bottom)
-        };
+        let new_top =
+            (current_top + delta_pct).clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
+        let new_bottom = (current_bottom - delta_pct)
+            .clamp(MIN_HEIGHT_PCT as i32, (100 - MIN_HEIGHT_PCT) as i32);
 
         let r1 = if border_index == 0 {
             new_top

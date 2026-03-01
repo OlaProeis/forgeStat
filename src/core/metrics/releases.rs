@@ -96,12 +96,12 @@ mod tests {
         reference_time: DateTime<Utc>,
         published_days_ago: i64,
     ) -> Release {
-        let published_at = Some(reference_time - Duration::days(published_days_ago));
+        let published_at = reference_time - Duration::days(published_days_ago);
         Release {
             tag_name: tag.to_string(),
             name: Some(name.to_string()),
-            created_at: published_at.unwrap(),
-            published_at,
+            created_at: published_at,
+            published_at: Some(published_at),
             prerelease: false,
             draft: false,
             days_since: Some(published_days_ago),
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn test_single_release_no_avg_interval() {
         let reference_time = Utc::now();
-        let releases = vec![create_test_release_with_time(
+        let releases = [create_test_release_with_time(
             "v1.0.0",
             "Only Release",
             reference_time,

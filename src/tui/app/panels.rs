@@ -141,7 +141,7 @@ impl App {
         let has_filter = !self.search_query.is_empty() || self.issues_label_filter.is_some();
         let per_page = self.issues_per_page;
         let current_page = (self.issues_scroll / per_page) + 1;
-        let total_pages = ((filtered_count as usize + per_page - 1) / per_page).max(1);
+        let total_pages = (filtered_count as usize).div_ceil(per_page).max(1);
 
         // Check if issues were truncated (limited by API fetch)
         let truncated =

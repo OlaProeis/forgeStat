@@ -172,8 +172,6 @@ pub fn format_summary(snapshot: &RepoSnapshot) -> String {
             RED
         } else if security.medium_count > 0 {
             YELLOW
-        } else if security.low_count > 0 {
-            GREEN
         } else {
             GREEN
         };

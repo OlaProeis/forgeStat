@@ -401,7 +401,7 @@ fn compute_maintenance_score(snapshot: &RepoSnapshot) -> u8 {
     }
 
     // Ensure score doesn't go below 0 and cap at 25
-    score.max(0).min(25)
+    score.min(25)
 }
 
 /// Growth sub-score (0-25)
@@ -1106,7 +1106,7 @@ mod tests {
         // Plus recent activity bonus = 3
         // Total activity should be around 11
         assert!(
-            score >= 10 && score <= 13,
+            (10..=13).contains(&score),
             "Activity score should reflect velocity"
         );
     }
@@ -1364,7 +1364,7 @@ mod tests {
         // - No velocity data (total_opened = 0): resolution_score = 7, so no deduction = 15
         // - Perfect community health (+5): 15 + 5 = 20
         assert!(
-            score >= 19 && score <= 21,
+            (19..=21).contains(&score),
             "Maintenance score with perfect community health should be 20, got {}",
             score
         );
@@ -1448,7 +1448,7 @@ mod tests {
         // - No velocity data: no resolution deduction = 15
         // - Partial community health 50 (+2): 15 + 2 = 17
         assert!(
-            score >= 16 && score <= 18,
+            (16..=18).contains(&score),
             "Maintenance score with partial community health should be 17, got {}",
             score
         );
@@ -1524,7 +1524,7 @@ mod tests {
         // - No velocity data: no resolution deduction = 15
         // - No community health = no bonus: 15
         assert!(
-            score_without >= 14 && score_without <= 16,
+            (14..=16).contains(&score_without),
             "Maintenance score without community health should be 15, got {}",
             score_without
         );
@@ -1706,7 +1706,7 @@ mod tests {
         // Plus CI bonus (80%) = 4
         // Total = 6 + 3 + 4 = 13
         assert!(
-            score >= 12 && score <= 14,
+            (12..=14).contains(&score),
             "Activity score with 80% CI success rate should include ~4 point bonus, got {}",
             score
         );

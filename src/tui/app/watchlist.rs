@@ -119,8 +119,8 @@ impl WatchlistApp {
                     let stars_30d: u64 =
                         snapshot.stars.sparkline_30d.iter().map(|&v| v as u64).sum();
 
-                    let issues = snapshot.open_issues_count() as u64;
-                    let prs = snapshot.open_prs_count() as u64;
+                    let issues = snapshot.open_issues_count();
+                    let prs = snapshot.open_prs_count();
                     let last_release_days = snapshot.days_since_last_release().map(|d| d as u64);
                     let security_alerts = snapshot
                         .security_alerts

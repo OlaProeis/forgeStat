@@ -240,7 +240,7 @@ impl GitHubClient {
         let (sparkline_365d_start, sparkline_365d_buckets) =
             if repo_age_days < 365 && !timestamps.is_empty() {
                 let active_period_days = (now - repo_created_at).num_days().max(1);
-                let weeks = (active_period_days / 7).max(1).min(52) as usize;
+                let weeks = (active_period_days / 7).clamp(1, 52) as usize;
                 (repo_created_at, weeks)
             } else {
                 (now - Duration::days(365), 12)
@@ -276,6 +276,7 @@ impl GitHubClient {
     /// the OLDEST stargazers), uses the GraphQL API to fetch recent stargazers in
     /// reverse chronological order. Falls back to REST for smaller repos or when
     /// GraphQL is unavailable (e.g., unauthenticated users).
+    #[allow(dead_code)]
     async fn fetch_stargazer_timestamps(
         &self,
         owner: &str,
@@ -319,6 +320,7 @@ impl GitHubClient {
     /// Uses `orderBy: { field: STARRED_AT, direction: DESC }` to get the most
     /// recent stargazers first, then paginates forward (going further back in time)
     /// until we pass the cutoff or exhaust the page budget.
+    #[allow(dead_code)]
     async fn fetch_stargazer_timestamps_graphql(
         &self,
         owner: &str,

@@ -131,7 +131,7 @@ fn sort_issues_by_age_ascending(by_label: &mut HashMap<String, Vec<Issue>>) {
 }
 
 /// Sorts a vector of issues by created_at ascending (oldest first)
-fn sort_vec_by_age_ascending(issues: &mut Vec<Issue>) {
+fn sort_vec_by_age_ascending(issues: &mut [Issue]) {
     issues.sort_by(|a, b| a.created_at.cmp(&b.created_at));
 }
 

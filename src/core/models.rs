@@ -701,7 +701,7 @@ mod tests {
             serde_json::from_str(&json).expect("Failed to deserialize");
 
         assert_eq!(deserialized.previous_snapshot_at, Some(previous));
-        assert!(deserialized.snapshot_history_id.to_string().len() > 0);
+        assert!(!deserialized.snapshot_history_id.to_string().is_empty());
     }
 
     #[test]

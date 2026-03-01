@@ -877,25 +877,23 @@ async fn run_watchlist_loop(repos: &[String]) -> Result<()> {
 
         let results = futures::future::join_all(futures).await;
 
-        for result in results {
-            if let Some((repo, snapshot_result)) = result {
-                match snapshot_result {
-                    Ok(snapshot) => {
-                        app.add_snapshot(repo, snapshot);
-                    }
-                    Err(e) => {
-                        log::warn!("Failed to fetch {}: {}", repo, e);
-                        // Try to load from cache
-                        let parts: Vec<&str> = repo.split('/').collect();
-                        if let Ok(cache) = Cache::new(parts[0], parts[1]) {
-                            if let Ok(Some((snapshot, _))) = cache.load().await {
-                                app.add_snapshot(repo, snapshot);
-                            } else {
-                                app.add_error(repo, e.to_string());
-                            }
+        for (repo, snapshot_result) in results.into_iter().flatten() {
+            match snapshot_result {
+                Ok(snapshot) => {
+                    app.add_snapshot(repo, snapshot);
+                }
+                Err(e) => {
+                    log::warn!("Failed to fetch {}: {}", repo, e);
+                    // Try to load from cache
+                    let parts: Vec<&str> = repo.split('/').collect();
+                    if let Ok(cache) = Cache::new(parts[0], parts[1]) {
+                        if let Ok(Some((snapshot, _))) = cache.load().await {
+                            app.add_snapshot(repo, snapshot);
                         } else {
                             app.add_error(repo, e.to_string());
                         }
+                    } else {
+                        app.add_error(repo, e.to_string());
                     }
                 }
             }
@@ -913,16 +911,7 @@ async fn run_watchlist_loop(repos: &[String]) -> Result<()> {
         app.render(&mut terminal)?;
 
         // Run the event loop
-        let action = loop {
-            match app.run_event_loop(&mut terminal).await {
-                Ok(WatchlistAction::Quit) => break Ok(WatchlistAction::Quit),
-                Ok(WatchlistAction::Refresh) => break Ok(WatchlistAction::Refresh),
-                Ok(WatchlistAction::SelectRepo(owner, repo)) => {
-                    break Ok(WatchlistAction::SelectRepo(owner, repo))
-                }
-                Err(e) => break Err(e),
-            }
-        };
+        let action = app.run_event_loop(&mut terminal).await;
 
         match action {
             Ok(WatchlistAction::Quit) => {

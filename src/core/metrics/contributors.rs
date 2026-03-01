@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_contributor_sorting() {
-        let contributors = vec![
+        let contributors = [
             Contributor {
                 username: "user1".to_string(),
                 commit_count: 50,
@@ -256,7 +256,7 @@ mod tests {
         ];
 
         // Simulate top 10 selection (already sorted by GitHub API)
-        let top: Vec<_> = contributors.iter().take(10).cloned().collect();
+        let top = contributors.to_vec();
 
         assert_eq!(top.len(), 3);
         assert_eq!(top[0].username, "user1");

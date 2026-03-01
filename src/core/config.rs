@@ -495,7 +495,7 @@ impl LayoutConfig {
     }
 
     /// Normalize column widths to ensure they sum to 100%
-    fn normalize_columns(columns: &mut Vec<PanelLayout>) {
+    fn normalize_columns(columns: &mut [PanelLayout]) {
         if columns.is_empty() {
             return;
         }
@@ -902,17 +902,11 @@ pub fn animation_file_path() -> Result<PathBuf> {
 
 /// Configuration for multi-repo watchlist mode
 /// Stored in watchlist.toml with a list of "owner/repo" format repositories
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct WatchlistConfig {
     /// List of repositories in "owner/repo" format
     #[serde(default)]
     pub repos: Vec<String>,
-}
-
-impl Default for WatchlistConfig {
-    fn default() -> Self {
-        Self { repos: Vec::new() }
-    }
 }
 
 impl WatchlistConfig {

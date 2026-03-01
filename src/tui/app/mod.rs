@@ -264,6 +264,7 @@ impl ReleasesLimit {
         }
     }
 
+    #[allow(dead_code)]
     fn label(self) -> &'static str {
         match self {
             Self::Last5 => "5",
@@ -831,7 +832,7 @@ impl App {
         if !self.animation_config.is_flash_enabled() {
             return false;
         }
-        self.panel_flash.map_or(false, |(_, start)| {
+        self.panel_flash.is_some_and(|(_, start)| {
             let elapsed = start.elapsed().as_millis() as u64;
             elapsed < self.animation_config.flash_duration_ms
         })

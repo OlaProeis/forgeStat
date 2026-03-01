@@ -374,28 +374,26 @@ pub fn run_event_loop(terminal: &mut DefaultTerminal, app: &mut App) -> Result<A
                     MouseEventKind::Down(_) => {
                         if app.is_zoomed() {
                             app.exit_zoom();
+                        } else if let Some(border_idx) =
+                            app.get_vertical_border_at(mouse.column, mouse.row)
+                        {
+                            app.start_border_drag(
+                                BorderType::Vertical,
+                                border_idx,
+                                mouse.column,
+                                mouse.row,
+                            );
+                        } else if let Some(border_idx) =
+                            app.get_horizontal_border_at(mouse.column, mouse.row)
+                        {
+                            app.start_border_drag(
+                                BorderType::Horizontal,
+                                border_idx,
+                                mouse.column,
+                                mouse.row,
+                            );
                         } else {
-                            if let Some(border_idx) =
-                                app.get_vertical_border_at(mouse.column, mouse.row)
-                            {
-                                app.start_border_drag(
-                                    BorderType::Vertical,
-                                    border_idx,
-                                    mouse.column,
-                                    mouse.row,
-                                );
-                            } else if let Some(border_idx) =
-                                app.get_horizontal_border_at(mouse.column, mouse.row)
-                            {
-                                app.start_border_drag(
-                                    BorderType::Horizontal,
-                                    border_idx,
-                                    mouse.column,
-                                    mouse.row,
-                                );
-                            } else {
-                                app.handle_mouse_click(mouse.column, mouse.row);
-                            }
+                            app.handle_mouse_click(mouse.column, mouse.row);
                         }
                     }
                     MouseEventKind::Drag(_) => {

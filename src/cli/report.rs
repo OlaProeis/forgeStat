@@ -77,7 +77,7 @@ fn format_health_section(health: &HealthScore) -> String {
     section.push_str(&format!("| Community | {} | 25 |\n", health.community));
     section.push_str(&format!("| Maintenance | {} | 25 |\n", health.maintenance));
     section.push_str(&format!("| Growth | {} | 25 |\n", health.growth));
-    section.push_str("\n");
+    section.push('\n');
 
     section
 }
@@ -122,7 +122,7 @@ fn format_stars_section(snapshot: &RepoSnapshot) -> String {
         "| Last 90 days | +{} |\n",
         format_number(stars_90d)
     ));
-    section.push_str("\n");
+    section.push('\n');
 
     section
 }
@@ -167,7 +167,7 @@ fn format_issues_section(snapshot: &RepoSnapshot) -> String {
                 snapshot.issues.unlabelled.len()
             ));
         }
-        section.push_str("\n");
+        section.push('\n');
     }
 
     section
@@ -189,7 +189,7 @@ fn format_prs_section(snapshot: &RepoSnapshot) -> String {
         "| Merged (30d) | {} |\n",
         prs.merged_last_30d.len()
     ));
-    section.push_str("\n");
+    section.push('\n');
 
     if let Some(avg_hours) = prs.avg_time_to_merge_hours {
         let avg_days = avg_hours / 24.0;
@@ -234,7 +234,7 @@ fn format_contributors_section(snapshot: &RepoSnapshot) -> String {
                 format_number(contributor.commit_count)
             ));
         }
-        section.push_str("\n");
+        section.push('\n');
     }
 
     section
@@ -281,7 +281,7 @@ fn format_releases_section(snapshot: &RepoSnapshot) -> String {
         }
     }
 
-    section.push_str("\n");
+    section.push('\n');
 
     section
 }
@@ -315,7 +315,7 @@ fn format_velocity_section(snapshot: &RepoSnapshot) -> String {
                 ratio
             ));
         }
-        section.push_str("\n");
+        section.push('\n');
     }
 
     // PRs velocity
@@ -340,7 +340,7 @@ fn format_velocity_section(snapshot: &RepoSnapshot) -> String {
                 ratio
             ));
         }
-        section.push_str("\n");
+        section.push('\n');
     }
 
     // Averages
@@ -360,7 +360,7 @@ fn format_velocity_section(snapshot: &RepoSnapshot) -> String {
         "| PRs | {:.1} | {:.1} |\n",
         avg_prs_opened, avg_prs_closed
     ));
-    section.push_str("\n");
+    section.push('\n');
 
     section
 }
@@ -383,7 +383,7 @@ fn format_security_section(snapshot: &RepoSnapshot) -> String {
                 section.push_str(&format!("| 🟠 High | {} |\n", security.high_count));
                 section.push_str(&format!("| 🟡 Medium | {} |\n", security.medium_count));
                 section.push_str(&format!("| 🟢 Low | {} |\n", security.low_count));
-                section.push_str("\n");
+                section.push('\n');
             } else {
                 section.push_str("✅ No open security alerts\n\n");
             }
@@ -400,14 +400,12 @@ fn format_security_section(snapshot: &RepoSnapshot) -> String {
 fn format_number(n: u64) -> String {
     let s = n.to_string();
     let mut result = String::new();
-    let mut count = 0;
 
-    for ch in s.chars().rev() {
+    for (count, ch) in s.chars().rev().enumerate() {
         if count > 0 && count % 3 == 0 {
             result.push(',');
         }
         result.push(ch);
-        count += 1;
     }
 
     result.chars().rev().collect()

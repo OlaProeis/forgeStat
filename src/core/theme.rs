@@ -598,8 +598,10 @@ mod tests {
 
     #[test]
     fn test_theme_file_serde() {
-        let mut theme_file = ThemeFile::default();
-        theme_file.theme = Some("dracula".to_string());
+        let theme_file = ThemeFile {
+            theme: Some("dracula".to_string()),
+            ..Default::default()
+        };
 
         let toml_str = toml::to_string_pretty(&theme_file).expect("Failed to serialize");
         assert!(toml_str.contains("theme = \"dracula\""));

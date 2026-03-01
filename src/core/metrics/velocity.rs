@@ -86,7 +86,7 @@ impl<'a> VelocityMetrics<'a> {
                 .await
             {
                 Ok(page) => {
-                    weekly[i].opened = page.total_count.unwrap_or(0) as u64;
+                    weekly[i].opened = page.total_count.unwrap_or(0);
                 }
                 Err(e) => {
                     log::warn!("Search failed for opened issues {}: {}", start_date, e);
@@ -107,7 +107,7 @@ impl<'a> VelocityMetrics<'a> {
                 .await
             {
                 Ok(page) => {
-                    weekly[i].closed = page.total_count.unwrap_or(0) as u64;
+                    weekly[i].closed = page.total_count.unwrap_or(0);
                 }
                 Err(e) => {
                     log::warn!("Search failed for closed issues {}: {}", start_date, e);
