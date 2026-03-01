@@ -1,0 +1,331 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Project Scaffold and Cargo Configuration",
+        "description": "Initialize Rust project structure with specified directories and dependencies per PRD crate stack",
+        "details": "Run `cargo new forgeStat --bin`; create directories: core/, tui/, gui/; add Cargo.toml dependencies: ratatui, egui_ratatui, eframe, octocrab, tokio={version=1, features=[full]}, serde, serde_json, toml, chrono, clap={features=[derive]}; implement basic main.rs with clap for --tui/--gui flags parsing repo argument (owner/repo format).",
+        "testStrategy": "cargo check; cargo test --lib; verify clap parses `forgeStat owner/repo`, `forgeStat owner/repo --gui`, `forgeStat owner/repo --tui`; directory structure matches forgeStat/core/tui/gui/main.rs",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 3,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Break down into: 1) Project initialization and directory structure setup, 2) Cargo.toml dependency configuration and basic CLI parsing in main.rs",
+        "updatedAt": "2026-02-27T14:38:39.528Z"
+      },
+      {
+        "id": "2",
+        "title": "Data Models Implementation",
+        "description": "Define complete RepoSnapshot struct and all sub-structs per PRD data model specification",
+        "details": "In core/models.rs: impl RepoSnapshot {pub fetched_at: chrono::DateTime<chrono::Utc>, repo: RepoMeta, stars: StarHistory, issues: IssueStats, pull_requests: PrStats, contributors: ContributorStats, releases: Vec<Release>, velocity: VelocityStats, security_alerts: Option<SecurityAlerts>}; derive Serialize/Deserialize for all; define all nested structs with relevant fields (e.g. StarHistory with total_count, sparkline_30d/90d/365d vectors; IssueStats with total_open, by_label: HashMap<String,Vec<Issue>>, etc.).",
+        "testStrategy": "Unit tests: serde roundtrip serialization/deserialization of sample RepoSnapshot JSON; validate all fields present and types correct",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Divide into: 1) Main RepoSnapshot and core structs, 2) StarHistory and IssueStats with nested collections, 3) Remaining metrics structs (PRs, contributors, etc.) with Serialize derives and tests",
+        "updatedAt": "2026-02-27T14:41:19.638Z"
+      },
+      {
+        "id": "3",
+        "title": "Config Management and GitHub PAT Handling",
+        "description": "Implement GITHUB_TOKEN env var reading and ~/.config/forgeStat/config.toml storage",
+        "details": "In core/config.rs: use std::env; use toml; use dirs::config_dir(); fn load_token() -> Result<String> {if let Ok(token) = env::var(\"GITHUB_TOKEN\") {return Ok(token);} let config_path = config_dir().unwrap().join(\"forgeStat\").join(\"config.toml\"); if config_path.exists() {let config: toml::Value = std::fs::read_to_string(&config_path)?.parse()?; return Ok(config[\"github_token\"].as_str().unwrap().to_string());} Err(\"No token\".into())} fn save_token(token: &str) -> Result<()> {let config_path = ...; std::fs::create_dir_all(config_path.parent().unwrap())?; std::fs::write(config_path, format!(\"github_token = \\\"\\\"\", token))?; Ok(())}",
+        "testStrategy": "Unit tests: mock env var returns token; mock config file read/write; verify token loading precedence (env > file); test missing token error handling",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Split into: 1) Token loading logic (env var precedence over config file), 2) Config file read/write with directory creation and TOML parsing",
+        "updatedAt": "2026-02-27T14:45:20.801Z"
+      },
+      {
+        "id": "4",
+        "title": "GitHub API Client with Octocrab Integration",
+        "description": "Create core GitHub client using octocrab with token auth supporting public/private repos",
+        "details": "In core/github_client.rs: use octocrab::Octocrab; pub struct GitHubClient {octocrab: Octocrab} impl GitHubClient {pub async fn new(token: Option<&str>) -> Self {let builder = Octocrab::builder(); if let Some(t) = token {builder.personal_token(t);} Self{octocrab: builder.build().unwrap()}}} implement methods: repos(owner: &str, repo: &str) -> Result<RepoMeta>, stargazers() -> Result<StarHistory>, issues() -> Result<IssueStats>, etc.",
+        "testStrategy": "Integration tests with GitHub mock server or public repo (e.g. rust-lang/rust); verify authenticated vs unauthenticated rate limits; test private repo access requires token",
+        "priority": "high",
+        "dependencies": [
+          "2",
+          "3"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Break down by API method stubs: 1) Client initialization and auth, 2) repos() metadata fetch, 3) Basic metrics stubs (stargazers/issues), 4) Complex metrics stubs (contributors/releases)",
+        "updatedAt": "2026-02-27T14:50:04.594Z"
+      },
+      {
+        "id": "5",
+        "title": "Local Cache System Implementation",
+        "description": "Implement cache.json storage in ~/.local/share/forgeStat/<owner>/<repo> with TTL and sync status",
+        "details": "In core/cache.rs: use dirs::data_local_dir(); pub struct Cache {path: PathBuf} impl Cache {pub fn new(owner: &str, repo: &str) -> Self {let base = data_local_dir().unwrap().join(\"forgeStat\").join(owner).join(repo); std::fs::create_dir_all(&base).unwrap(); Self{path: base.join(\"cache.json\")}} pub async fn load(&self) -> Result<Option<(RepoSnapshot, chrono::DateTime<Utc>)>> {...} pub async fn save(&self, snapshot: &RepoSnapshot) -> Result<()> {...} pub fn is_stale(&self, ttl_mins: u64) -> bool {...}}",
+        "testStrategy": "Unit tests: cache read/write roundtrip; TTL calculation (>15min = stale); offline mode loads last cache; verify cache path structure",
+        "priority": "high",
+        "dependencies": [
+          "2",
+          "3"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Divide into: 1) Cache path management and directory creation, 2) JSON read/write with TTL logic and serde integration",
+        "updatedAt": "2026-02-27T14:53:51.807Z"
+      },
+      {
+        "id": "6",
+        "title": "Star History API and Sparkline Implementation",
+        "description": "Fetch stargazer timestamps via GitHub Stargazers API with Accept: application/vnd.github.star+json",
+        "details": "In core/metrics/stars.rs: use GitHubClient; impl GitHubClient {pub async fn star_history(&self, owner: &str, repo: &str) -> Result<StarHistory> {let stargazers = self.octocrab.repos(owner, repo).stargazers().send().await?; let timestamps: Vec<DateTime<Utc>> = stargazers.items.iter().map(|star| star.starred_at).collect(); let sparkline_30d = generate_sparkline(&timestamps, chrono::Utc::now() - chrono::Duration::days(30)); ...}} fn generate_sparkline(timestamps: &[DateTime<Utc>], period_start: DateTime<Utc>) -> Vec<i32> { /* bin timestamps into days, count stars per bin */ }",
+        "testStrategy": "Test with public repo (e.g. ratatui-org/ratatui); verify sparkline_30d/90d/365d vectors have correct length and values; mock API response tests",
+        "priority": "medium",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Split into: 1) Stargazers API call with custom Accept header, 2) Timestamp collection and filtering, 3) Sparkline generation algorithm for multiple periods (30d/90d/365d)",
+        "updatedAt": "2026-02-27T15:04:39.865Z"
+      },
+      {
+        "id": "7",
+        "title": "Issues Breakdown with Label Grouping and Age Sorting",
+        "description": "Fetch open issues grouped by label, sorted by age, including unlabelled",
+        "details": "In core/metrics/issues.rs: pub async fn issues_stats(&self, owner: &str, repo: &str) -> Result<IssueStats> {let issues = self.octocrab.issues(owner, repo).list().state(reqwest::StatusCode::OK).send().await?; let mut by_label: HashMap<String, Vec<Issue>> = HashMap::new(); let mut unlabelled = vec![]; for issue in issues {let labels: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect(); if labels.is_empty() {unlabelled.push(issue);} else {for label in labels {by_label.entry(label).or_insert(vec![]).push(issue.clone());}}} ... sort by created_at ascending (oldest first)}",
+        "testStrategy": "Verify label grouping correct; oldest issues first; unlabelled bucket works; total_open count matches",
+        "priority": "medium",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 6,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Break into: 1) Issues API fetch and label extraction, 2) Grouping logic (by_label HashMap + unlabelled) with age sorting",
+        "updatedAt": "2026-02-27T15:15:01.556Z"
+      },
+      {
+        "id": "8",
+        "title": "PR Stats Implementation (Open, Merged, Draft, Merge Time)",
+        "description": "Fetch PR stats including 30-day merged count, avg merge time, draft vs ready",
+        "details": "In core/metrics/prs.rs: async fn pr_stats(&self, owner: &str, repo: &str) -> Result<PrStats> {let open_prs = self.octocrab.pulls(owner, repo).list().state(reqwest::StatusCode::OK).send().await?; let mut merged_30d = 0; let mut total_merge_times = vec![]; for pr in self.octocrab.pulls(owner, repo).list().state(\"all\").send().await? {if pr.merged_at.is_some() && (Utc::now() - pr.merged_at.unwrap()) < Duration::days(30) {merged_30d += 1;} if let (Some(created), Some(merged)) = (pr.created_at, pr.merged_at) {total_merge_times.push((merged - created).num_days());}} PrStats{open_count: open_prs.len(), merged_30d, avg_merge_days: total_merge_times.iter().sum::<i64>() as f64 / total_merge_times.len() as f64, draft_count: open_prs.iter().filter(|pr| pr.draft).count(), ...}",
+        "testStrategy": "Verify counts accurate against public repo; avg merge time calculation; draft filtering",
+        "priority": "medium",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 7,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Divide into: 1) Open PRs count and draft filtering, 2) Merged PRs 30-day count, 3) Average merge time calculation across all history",
+        "updatedAt": "2026-02-27T15:19:04.423Z"
+      },
+      {
+        "id": "9",
+        "title": "Contributor Activity Metrics",
+        "description": "Top 10 commit contributors, new contributors last 30 days, total unique",
+        "details": "In core/metrics/contributors.rs: async fn contributor_stats(&self, owner: &str, repo: &str) -> Result<ContributorStats> {let commits = self.octocrab.repos(owner, repo).commits().list().send().await?; let mut contrib_counts: HashMap<String, u64> = HashMap::new(); let thirty_days_ago = Utc::now() - Duration::days(30); let mut new_contribs = HashSet::new(); for commit in commits {let author = commit.author.login; *contrib_counts.entry(author.clone()).or_insert(0) += 1; if commit.author.date > thirty_days_ago && !new_contribs.contains(&author) {new_contribs.insert(author);}} let top10: Vec<_> = contrib_counts.iter().sorted_by(|a,b| b.1.cmp(a.1)).take(10).collect(); ...}",
+        "testStrategy": "Test commit aggregation; top10 sorting descending; new contrib detection",
+        "priority": "medium",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 7,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Split into: 1) Commit aggregation and top-10 sorting, 2) New contributors detection (last 30 days) with HashSet deduplication",
+        "updatedAt": "2026-02-27T15:27:32.872Z"
+      },
+      {
+        "id": "10",
+        "title": "Release Cadence Metrics",
+        "description": "Last 5 releases with days since last, average interval",
+        "details": "In core/metrics/releases.rs: async fn release_stats(&self, owner: &str, repo: &str) -> Result<Vec<Release>> {let releases = self.octocrab.repos(owner, repo).releases().list().per_page(5u8).send().await?; let mut releases_vec: Vec<Release> = releases.items.into_iter().map(|r| Release{name: r.name, tag: r.tag_name, published_at: r.published_at, days_since: (Utc::now() - r.published_at.unwrap()).num_days()}).collect(); if releases_vec.len() > 1 {let intervals: Vec<i64> = releases_vec.windows(2).map(|w| (w[0].published_at - w[1].published_at).num_days()).collect(); releases_vec[0].avg_interval = intervals.iter().sum::<i64>() as f64 / intervals.len() as f64;} releases_vec}",
+        "testStrategy": "Verify last 5 releases fetched; days_since calculation; avg_interval accurate",
+        "priority": "medium",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 5,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Break into: 1) Fetch last 5 releases mapping, 2) Days_since and average interval calculations with windows iteration",
+        "updatedAt": "2026-02-27T15:31:26.827Z"
+      },
+      {
+        "id": "11",
+        "title": "Velocity Charts (Issues/PRs opened vs closed last 8 weeks)",
+        "description": "Weekly velocity stats for issues and PRs over last 8 weeks",
+        "details": "In core/metrics/velocity.rs: async fn velocity_stats(&self, owner: &str, repo: &str) -> Result<VelocityStats> {let eight_weeks_ago = Utc::now() - Duration::weeks(8); let mut weekly_data = vec![Default::default(); 8]; // Fetch issues/PRs with created/closed dates, bin into weeks, count opened/closed per week}",
+        "testStrategy": "Verify 8 weeks of data; opened vs closed counts per week; date binning correct",
+        "priority": "medium",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 8,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Divide into: 1) Issues velocity (opened/closed per week), 2) PRs velocity (opened/closed per week), 3) Date binning into 8-week buckets",
+        "updatedAt": "2026-02-27T15:38:38.279Z"
+      },
+      {
+        "id": "12",
+        "title": "Security Alerts (Dependabot) with Auth Check",
+        "description": "Fetch Dependabot alerts count (requires security_events scope)",
+        "details": "In core/metrics/security.rs: async fn security_alerts(&self, owner: &str, repo: &str) -> Result<Option<SecurityAlerts>> {match self.octocrab.repos(owner, repo).security_advisories().list().send().await {Ok(alerts) => Some(SecurityAlerts{open_count: alerts.len(), ...}), Err(e) if e.to_string().contains(\"scope\") => None, Err(e) => Err(e),}}",
+        "testStrategy": "Test with authenticated PAT having security_events scope; verify None returned without scope; count accurate",
+        "priority": "low",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Single task: Implement security_advisories API with scope error handling returning Option<SecurityAlerts>",
+        "updatedAt": "2026-02-27T15:43:23.453Z"
+      },
+      {
+        "id": "13",
+        "title": "RepoSnapshot Fetcher Orchestration",
+        "description": "Main function to fetch complete RepoSnapshot coordinating all metrics",
+        "details": "In core/snapshot.rs: pub async fn fetch_snapshot(client: &GitHubClient, cache: &Cache, owner: &str, repo: &str, force_refresh: bool) -> Result<RepoSnapshot> {if !force_refresh && let Some((snapshot, fetched_at)) = cache.load().await? && !cache.is_stale(15) {return Ok(snapshot);} let repo_meta = client.repos(owner, repo).await?; let (stars, issues, prs, ...) = tokio::join!(client.star_history(owner,repo), client.issues_stats(owner,repo), ...); Ok(RepoSnapshot{fetched_at: Utc::now(), repo: repo_meta, stars, issues, prs, contributors, releases, velocity, security_alerts,})}",
+        "testStrategy": "End-to-end test: fetch complete snapshot for public repo; verify cache hit/miss behavior; force_refresh bypasses cache",
+        "priority": "high",
+        "dependencies": [
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "11",
+          "12"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 8,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Break down into: 1) Cache check and early return logic, 2) Parallel tokio::join! for all 9 metrics, 3) RepoSnapshot assembly and save",
+        "updatedAt": "2026-02-27T15:46:02.120Z"
+      },
+      {
+        "id": "14",
+        "title": "Ratatui Core Layout and Metric Panels",
+        "description": "Implement TUI with 7 metric panels, tab navigation, status bar with sync/offline indicator",
+        "details": "In tui/app.rs: use ratatui::{prelude::*, widgets::*}; struct App {snapshot: Option<RepoSnapshot>, cache: Cache, selected_panel: usize, ...} impl App {fn render(&mut self, f: &mut Frame) {let chunks = Layout::default().constraints([Constraint::Percentage(25);4]).split(f.area()); // 7 panels in grid; render StarHistory sparkline with ratatui::widgets::Sparkline; Issues table with Table; PR stats cards; etc.; status bar: if offline {Paragraph::new(\"🔴 OFFLINE\").red()} else if stale {\"🟡 STALE\"} else {\"🟢 LIVE | Last sync: X mins ago\"};}}",
+        "testStrategy": "cargo run forgeStat ratatui-org/ratatui --tui; verify all 7 panels render data; tab/shift-tab cycles panels; r refreshes; q quits; ? shows help",
+        "priority": "high",
+        "dependencies": [
+          "13"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 9,
+        "recommendedSubtasks": 5,
+        "expansionPrompt": "Divide by UI component: 1) Layout and 7-panel grid, 2) Star sparkline widget, 3) Issues table, 4) PR/contributor cards, 5) Status bar with sync indicators",
+        "updatedAt": "2026-02-27T16:02:21.852Z"
+      },
+      {
+        "id": "15",
+        "title": "TUI Event Handling and Navigation",
+        "description": "Implement key bindings: Tab navigation, r refresh, q quit, ? help, arrow scrolling",
+        "details": "In tui/app.rs: loop {match crossterm::event::read()? {Event::Key(key) => match key.code {KeyCode::Tab => self.selected_panel = (self.selected_panel + 1) % 7; KeyCode::Char('r') => {self.snapshot = Some(fetch_snapshot(&self.client, &self.cache, owner, repo, true).await?); self.cache.save(&self.snapshot.as_ref().unwrap()).await?;}, KeyCode::Char('q') => break; KeyCode::Char('?') => show_help_overlay(); KeyCode::Up|Down => scroll_active_panel(); _ => {}}}}}",
+        "testStrategy": "Manual testing: tab cycles panels; r forces refresh and updates status; q exits cleanly; arrow keys scroll content",
+        "priority": "medium",
+        "dependencies": [
+          "14"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 6,
+        "recommendedSubtasks": 2,
+        "expansionPrompt": "Split into: 1) Key binding matching (tab/r/q/?/arrows), 2) Async refresh integration with cache update and error display",
+        "updatedAt": "2026-02-27T16:35:50.597Z"
+      },
+      {
+        "id": "16",
+        "title": "Egui_ratatui Desktop GUI Wrapper",
+        "description": "Implement --gui mode using eframe wrapping ratatui backend via egui_ratatui",
+        "details": "In gui/main.rs: use eframe::egui; use egui_ratatui; fn main() {let options = eframe::NativeOptions::default(); eframe::run_native(\"Repowatch\", options, Box::new(|cc| {let mut app = TuiApp::new(cc.egui_ctx.clone(), args.owner_repo()); // TuiApp wraps ratatui App; Box::new(app)}));} impl eframe::App for TuiApp {fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {egui_ratatui::EguiRatatui::new().show(ctx, |f| {self.ratatui_app.render(f);}); if ctx.input(|i| i.key_pressed(egui::Key::R)) {self.refresh();}}}",
+        "testStrategy": "cargo run forgeStat ratatui-org/ratatui --gui; verify desktop window opens with identical TUI content; refresh button/keyboard works",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "14"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 8,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Break into: 1) eframe setup and native window, 2) egui_ratatui integration wrapping TUI App, 3) GUI event handling (refresh/keyboard)",
+        "updatedAt": "2026-02-27T16:23:34.792Z"
+      },
+      {
+        "id": "17",
+        "title": "Main CLI Integration and Launch Modes",
+        "description": "Integrate TUI/GUI launch from main.rs based on CLI flags with repo parsing",
+        "details": "In main.rs: #[tokio::main] async fn main() {let matches = clap::Command::new(\"forgeStat\").arg(Arg::Positional(\"repo\", ...)).arg(arg!(--gui)).arg(arg!(--tui)).get_matches(); let repo = matches.get_one::<String>(\"repo\").unwrap(); let (owner, repo_name) = parse_repo(repo)?; // \"owner/repo\" -> (\"owner\", \"repo\"); if matches.get_flag(\"gui\") {gui::run(owner, repo_name).await;} else {tui::run(owner, repo_name).await;}}",
+        "testStrategy": "Test all modes: default TUI, explicit --tui, --gui; repo parsing edge cases; error handling for invalid repo format",
+        "priority": "high",
+        "dependencies": [
+          "14",
+          "16"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 4,
+        "recommendedSubtasks": 1,
+        "expansionPrompt": "Single task: Enhance clap parsing with repo format validation and conditional TUI/GUI launch dispatching",
+        "updatedAt": "2026-02-27T16:35:56.697Z"
+      },
+      {
+        "id": "18",
+        "title": "Error Handling, Rate Limiting, and Polish",
+        "description": "Add comprehensive error handling, rate limit display, offline resilience, README",
+        "details": "Wrap all GitHub calls in proper error handling with user-friendly messages; display X-RateLimit-Remaining in status bar; graceful offline fallbacks; add README.md with screenshots, usage, PAT setup instructions; implement auto-refresh every 10min timer in TUI/GUI event loops.",
+        "testStrategy": "Test GitHub rate limit exceeded (mock 403); network offline simulation; verify graceful degradation to cache; README validation",
+        "priority": "medium",
+        "dependencies": [
+          "17"
+        ],
+        "status": "done",
+        "subtasks": [],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Divide into: 1) Comprehensive error wrapping/display, 2) Rate limit header parsing/display, 3) Auto-refresh timer implementation, 4) README/documentation",
+        "updatedAt": "2026-02-27T17:28:05.406Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-02-27T17:28:05.406Z",
+      "taskCount": 18,
+      "completedCount": 18,
+      "tags": [
+        "master"
+      ]
+    }
+  }
+}

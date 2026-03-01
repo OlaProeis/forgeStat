@@ -1,0 +1,462 @@
+<context>
+# Overview
+
+forgeStat is a Rust-based terminal dashboard for GitHub repository metrics. It already has a full-featured TUI with 7 metric panels (Stars, Issues, PRs, Contributors, Releases, Velocity, Security), interactive overlays (zoom, diff mode, mini-map, fuzzy finder, command palette, search/filter), 6 themes, mouse support, animations, smart caching with offline mode, and CLI integration (--list, --from-stdin).
+
+Phase 3 adds the **analysis, composability, and multi-repo** layers — transforming forgeStat from a single-repo viewer into a comprehensive open-source project management tool.
+
+# Existing Architecture
+
+- **Language:** Rust 2021 edition
+- **TUI:** ratatui 0.30
+- **GitHub API:** octocrab + reqwest (async via tokio)
+- **Data model:** `RepoSnapshot` struct containing `StarHistory`, `IssueStats`, `PrStats`, `ContributorStats`, `Vec<Release>`, `VelocityStats`, `Option<SecurityAlerts>`
+- **Cache:** JSON files at platform-specific paths (~/.local/share/repowatch/<owner>/<repo>/)
+- **Config:** TOML files (theme.toml, statusbar.toml, layout.toml, animation.toml, config.toml)
+- **CLI:** clap with --list and --from-stdin flags
+- **Entry point:** main.rs with run_app_loop() that supports repo switching
+- **Modularity:** One feature per file in src/tui/app/ (panels.rs, zoom.rs, diff.rs, etc.)
+
+# Target Users
+
+- Open-source maintainers managing one or multiple repos
+- Contributors evaluating projects to contribute to
+- Engineering leads monitoring team project health
+- Developers choosing between competing libraries
+- CI/CD pipelines needing automated repo health checks
+</context>
+
+<PRD>
+# Phase 3: Analysis, Composability & Multi-Repo
+
+## Feature 1: JSON Output Flag (--json)
+
+### What it does
+Adds a `--json` CLI flag that fetches the repo snapshot and prints the full JSON data to stdout, then exits without launching the TUI. Makes forgeStat a composable CLI tool.
+
+### Why it matters
+Enables piping into `jq`, integration with scripts, GitHub Actions workflows, Slack bots, and custom dashboards. Turns forgeStat from "just a TUI" into a building block.
+
+### How it works
+- Add `--json` flag to clap CLI args (conflicts with --list, --from-stdin TUI mode)
+- When --json is set: fetch snapshot (using existing `fetch_snapshot()`), serialize to JSON via serde, print to stdout, exit
+- Should use the cache system (fetch fresh if stale, use cache if offline) exactly like the TUI does
+- Must NOT initialize ratatui or enable mouse/terminal raw mode
+- Exit code 0 on success, 1 on failure (with error to stderr)
+
+### Technical details
+- Add to `Cli` struct in main.rs: `#[arg(long, conflicts_with_all = ["list", "from_stdin"])] json: bool`
+- In main(), if cli.json: run fetch, `serde_json::to_string_pretty(&snapshot)`, println, return
+- The RepoSnapshot already derives Serialize so this is straightforward
+
+---
+
+## Feature 2: Summary Output Flag (--summary)
+
+### What it does
+Adds a `--summary` CLI flag that prints a compact, human-readable one-screen text summary of repo metrics and exits. No TUI.
+
+### Why it matters
+Quick health check without launching interactive mode. Useful for CI logs, cron job reports, quick terminal checks, piping into chat/email.
+
+### How it works
+- Add `--summary` flag to clap (conflicts with --list, --from-stdin, --json)
+- Fetch snapshot using existing infrastructure
+- Print formatted text summary covering all 7 metric areas:
+  ```
+  forgeStat: owner/repo
+  ═══════════════════════════════════════
+  ★ Stars:        1,234  (30d: +243, 90d: +977)
+  Issues:         42 open
+  Pull Requests:  5 open (2 draft, 3 ready) | 12 merged (30d) | avg merge: 4.2h
+  Contributors:   156 total (3 new in 30d)
+  Releases:       v2.1.0 (5d ago) | avg interval: 14d
+  Velocity:       Issues +8/-6/wk | PRs +4/-3/wk
+  Security:       2 alerts (0 critical, 1 high, 1 medium)
+  ═══════════════════════════════════════
+  Health Score:   87/100 (Excellent)
+  ```
+- Use ANSI colors for terminal output (green/yellow/red for status indicators)
+- Exit code 0 on success, 1 on failure
+
+### Technical details
+- New module: `src/cli/summary.rs` or inline in main.rs (keep it simple)
+- Format functions can reuse `format_count()` from tui/app/utils.rs (make it pub(crate) if not already)
+- Include the health score once Feature 3 is implemented
+
+---
+
+## Feature 3: Repository Health Score
+
+### What it does
+Computes a 0-100 overall health score for a repository, broken down into 4 sub-scores. This is the headline differentiating feature.
+
+### Why it matters
+No existing tool provides a single, actionable number for "how healthy is this repo?" It's quotable ("this repo scores 87/100"), comparable, and immediately useful for decision-making.
+
+### Sub-scores (each 0-25, summing to 0-100)
+
+**Activity Score (0-25):**
+- Commit velocity trend (from VelocityStats: issues opened/closed, PRs opened/merged over recent weeks)
+- PR merge rate and speed (avg_time_to_merge_hours)
+- Recent activity recency (days since last commit/release)
+- Scoring: high recent activity = high score, declining trends penalized
+
+**Community Score (0-25):**
+- Contributor diversity (total unique contributors, ratio of top contributor commits to total)
+- New contributor rate (new_contributors_last_30d)
+- Issue engagement (comments per issue average)
+- Scoring: healthy contributor base with newcomers = high score
+
+**Maintenance Score (0-25):**
+- Release cadence regularity (avg_interval, days since last release)
+- Security alert count (fewer = better, critical/high penalized heavily)
+- Issue resolution signals (ratio of opened to closed from velocity)
+- Scoring: regular releases + low security debt + active issue management = high score
+
+**Growth Score (0-25):**
+- Star trend trajectory (30d, 90d growth rates from sparkline data)
+- Fork activity (forks_count relative to stars — healthy ratio)
+- Watcher engagement (watchers_count)
+- Scoring: accelerating growth = high score, stagnation penalized
+
+### How it works
+- New module: `src/core/health.rs`
+- `pub struct HealthScore { total: u8, activity: u8, community: u8, maintenance: u8, growth: u8, grade: HealthGrade }`
+- `pub enum HealthGrade { Excellent, Good, Fair, NeedsAttention, Critical }` (mapped from total score ranges)
+- `pub fn compute_health_score(snapshot: &RepoSnapshot) -> HealthScore`
+- Pure computation from existing snapshot data — no additional API calls needed
+- Score is displayed in: TUI status bar or dedicated area, --summary output, --json output, zoom stars view, mini-map
+
+### Display in TUI
+- Show health score badge in the status bar area or header: "Health: 87/100 (Excellent)" with color coding
+- In mini-map, show as a prominent metric
+- In --summary, show as the closing line
+- In --json, include as a top-level field alongside the snapshot
+
+### Grade thresholds
+- 90-100: Excellent (green)
+- 75-89: Good (cyan)
+- 60-74: Fair (yellow)
+- 40-59: Needs Attention (orange/yellow)
+- 0-39: Critical (red)
+
+---
+
+## Feature 4: Multi-Repo Watchlist Dashboard
+
+### What it does
+A new mode (`forgeStat --watchlist` or `forgeStat -w`) that shows a compact table dashboard of multiple repositories at once, with key metrics per row.
+
+### Why it matters
+Maintainers managing multiple projects need a portfolio view. Currently they must open forgeStat for each repo individually. This gives them a single-screen overview of all their projects.
+
+### How it works
+- Configuration: `watchlist.toml` in the forgeStat config directory:
+  ```toml
+  repos = [
+    "owner/repo1",
+    "owner/repo2",
+    "owner/repo3",
+  ]
+  ```
+- Or `forgeStat --watchlist owner/repo1,owner/repo2,owner/repo3` for ad-hoc usage
+- Or auto-populate from cached repos (forgeStat --watchlist without args uses all cached repos)
+- Display as a ratatui Table with columns:
+  | Repo | Health | ★ Stars | 30d | Issues | PRs | Last Release | Security |
+- Each row is color-coded by health score
+- Navigation: arrow keys to select row, Enter to open full dashboard for that repo
+- Data: fetch all repos in parallel using tokio::join or futures::join_all
+- Cache: use existing cache system for each repo
+- Show loading state as repos are fetched
+
+### Technical details
+- New file: `src/tui/app/watchlist.rs`
+- New config loader in `src/core/config.rs` for watchlist.toml
+- New CLI flag: `--watchlist` or `-w` with optional comma-separated repos
+- The watchlist view is a separate TUI mode (not an overlay on the single-repo view)
+- Press Enter on a row to switch to full single-repo dashboard (reuse existing SwitchRepo action)
+- Press `q` to quit, `r` to refresh all
+
+---
+
+## Feature 5: Markdown Report Export (--report)
+
+### What it does
+Generates a formatted Markdown health report for a repository and writes it to stdout or a file.
+
+### Why it matters
+Maintainers need to communicate project health to teams, sponsors, and community. A generated markdown report can be pasted into GitHub Discussions, READMEs, blog posts, team standups, or committed as a periodic health check artifact.
+
+### How it works
+- CLI flag: `--report` (conflicts with --json, --summary, --list)
+- Optional: `--report-file <path>` to write to file instead of stdout
+- Output format:
+  ```markdown
+  # forgeStat Health Report: owner/repo
+  > Generated on 2026-03-01 by [forgeStat](https://github.com/...)
+
+  ## Health Score: 87/100 (Excellent)
+  | Category | Score | Details |
+  |----------|-------|---------|
+  | Activity | 22/25 | 4 PRs merged/week, avg merge time 4.2h |
+  | Community | 20/25 | 156 contributors, 3 new in 30d |
+  | Maintenance | 23/25 | Regular releases (14d avg), 0 critical alerts |
+  | Growth | 22/25 | +243 stars in 30d, accelerating trend |
+
+  ## Stars
+  - Total: 1,234
+  - 30-day growth: +243
+  - 90-day growth: +977
+
+  ## Issues
+  - Open: 42
+  - Top labels: bug (12), enhancement (8), help wanted (5)
+
+  ## Pull Requests
+  - Open: 5 (2 draft, 3 ready)
+  - Merged (30d): 12
+  - Average merge time: 4.2 hours
+
+  ## Contributors
+  - Total unique: 156
+  - New in last 30 days: 3
+  - Top: user1 (234 commits), user2 (156 commits), ...
+
+  ## Releases
+  - Latest: v2.1.0 (5 days ago)
+  - Average interval: 14 days
+
+  ## Velocity (8 weeks)
+  - Issues: avg +8 opened / -6 closed per week
+  - PRs: avg +4 opened / -3 merged per week
+
+  ## Security
+  - Open alerts: 2 (0 critical, 1 high, 1 medium, 0 low)
+  ```
+
+### Technical details
+- New module: `src/cli/report.rs`
+- Reuse `fetch_snapshot()` and `compute_health_score()`
+- Pure string formatting — no TUI dependencies
+- The report generation function takes a `RepoSnapshot` and `HealthScore` and returns a `String`
+
+---
+
+## Feature 6: Compare Mode (--compare)
+
+### What it does
+Side-by-side comparison of two repositories: `forgeStat owner/repo1 --compare owner/repo2`. Shows metrics for both repos in a split-screen TUI view or as text output.
+
+### Why it matters
+Developers choosing between competing libraries (e.g., serde vs simd-json, axum vs actix-web) need to compare health, activity, and community at a glance. Currently they'd have to run forgeStat twice and mentally compare.
+
+### How it works
+- CLI: `forgeStat owner/repo1 --compare owner/repo2`
+- Fetch both repos in parallel
+- TUI mode: Split screen with repo1 on left, repo2 on right
+  - Each side shows: health score, stars, issues, PRs, contributors, releases, velocity, security
+  - Highlight which repo "wins" each category (green for better, red for worse)
+  - Show delta between repos for numeric metrics
+- Can combine with --json or --summary for non-TUI comparison output
+- Navigation: Tab switches focus between left/right, q quits
+
+### Technical details
+- New file: `src/tui/app/compare.rs`
+- New CLI arg: `--compare <owner/repo>` (requires positional repo arg too)
+- Reuse existing fetch_snapshot and health score computation
+- The compare view is a separate TUI mode (like watchlist)
+- Health scores shown prominently at top of each side
+
+---
+
+## Feature 7: GitHub Actions / CI Status Panel (8th Panel)
+
+### What it does
+Adds an 8th panel to the main TUI showing GitHub Actions workflow status: recent runs, success/failure rate, and average duration.
+
+### Why it matters
+CI health is one of the most critical and frequently checked metrics for maintainers. Knowing if builds are passing, how long they take, and if there's been a regression is essential context alongside the existing 7 panels.
+
+### How it works
+- New API calls via GitHub REST API:
+  - `GET /repos/{owner}/{repo}/actions/runs?per_page=20` for recent workflow runs
+  - Extract: workflow name, status (success/failure/cancelled), conclusion, run duration, created_at
+- New data model:
+  ```rust
+  pub struct CIStatus {
+      pub total_runs_30d: u64,
+      pub success_rate: f64,        // 0.0-1.0
+      pub avg_duration_seconds: u64,
+      pub recent_runs: Vec<WorkflowRun>,
+      pub last_success: Option<DateTime<Utc>>,
+      pub last_failure: Option<DateTime<Utc>>,
+  }
+  pub struct WorkflowRun {
+      pub name: String,
+      pub status: String,      // "completed", "in_progress", "queued"
+      pub conclusion: Option<String>,  // "success", "failure", "cancelled"
+      pub created_at: DateTime<Utc>,
+      pub duration_seconds: Option<u64>,
+  }
+  ```
+- Panel display (compact): success rate %, last run status, avg duration
+- Zoom display: table of recent runs with name, status, time, duration
+- Include in health score (Activity sub-score boost for high CI success rate)
+- Add to RepoSnapshot as `pub ci_status: Option<CIStatus>` (optional since Actions may be disabled)
+
+### Technical details
+- New file: `src/core/metrics/ci.rs`
+- New API method in `github_client.rs`: `fetch_ci_status()`
+- Add `CIStatus` to `RepoSnapshot` with `#[serde(default)]` for backwards compatibility with cached snapshots
+- Add 8th panel variant `Panel::CI` to the enum
+- Update grid layout to accommodate 8 panels (adjust from 7-panel layout)
+- Update mini-map, zoom, keyboard shortcuts (number key `8`)
+- CI panel shows green check / red X icons (Unicode) for pass/fail
+
+---
+
+## Feature 8: Community Health Audit
+
+### What it does
+Checks for the presence of community health files and best-practice repository configuration, displayed as a checklist.
+
+### Why it matters
+GitHub's community profile page exists but requires navigating to it. Having this in the dashboard reminds maintainers what they're missing and helps contributors evaluate project maturity.
+
+### What it checks
+- README.md (exists and non-empty)
+- LICENSE or LICENSE.md
+- CONTRIBUTING.md
+- CODE_OF_CONDUCT.md
+- SECURITY.md or security policy
+- Issue templates (.github/ISSUE_TEMPLATE/)
+- PR template (.github/PULL_REQUEST_TEMPLATE.md)
+- FUNDING.yml (.github/FUNDING.yml)
+- Description set (from RepoMeta)
+- Topics/tags set (need to add to API fetch)
+
+### How it works
+- Use GitHub Contents API: `GET /repos/{owner}/{repo}/contents/{path}` (HEAD request or check for 404)
+- Or use the community profile endpoint: `GET /repos/{owner}/{repo}/community/profile`
+- New data model:
+  ```rust
+  pub struct CommunityHealth {
+      pub has_readme: bool,
+      pub has_license: bool,
+      pub has_contributing: bool,
+      pub has_code_of_conduct: bool,
+      pub has_security_policy: bool,
+      pub has_issue_templates: bool,
+      pub has_pr_template: bool,
+      pub has_funding: bool,
+      pub has_description: bool,
+      pub score: u8,  // count of true values, max 9
+  }
+  ```
+- Display as a checklist with ✓/✗ marks in the Security panel zoom view, or as a sub-section of the health score
+- Factor into the Maintenance sub-score of the health score
+
+### Technical details
+- New file: `src/core/metrics/community.rs`
+- Prefer the community profile API endpoint (single call) over individual file checks
+- Add to `RepoSnapshot` as `pub community_health: Option<CommunityHealth>` (backwards compatible)
+- Display in Security zoom view (or as a new sub-section in mini-map)
+- Include in health score Maintenance sub-score
+
+---
+
+## Feature 9: Star Milestone Prediction
+
+### What it does
+Based on recent star growth trends, predicts when the repo will hit the next milestone (100, 500, 1k, 5k, 10k, 25k, 50k, 100k stars).
+
+### Why it matters
+Fun, motivating, and shareable. Maintainers love knowing "you'll hit 10k stars in ~45 days." Adds a forward-looking dimension to the dashboard that no other tool provides.
+
+### How it works
+- Use sparkline_30d data to calculate average daily star rate
+- Use sparkline_90d for a secondary longer-term rate
+- Compute weighted average (recent trend weighted higher)
+- Find next milestone above current total
+- Calculate days to milestone: `(milestone - current) / daily_rate`
+- Display in Stars zoom view: "At current pace: 5,000 ★ in ~47 days"
+- If growth is zero or negative: "Growth has stalled" message instead
+- Include in --summary and --report output
+
+### Technical details
+- Add to `src/core/metrics/stars.rs` as `pub fn predict_milestone(star_history: &StarHistory) -> Option<MilestonePrediction>`
+- `pub struct MilestonePrediction { pub next_milestone: u64, pub estimated_days: u64, pub daily_rate: f64 }`
+- Pure computation from existing sparkline data — no API calls
+- Display in render_zoom_stars() in the info section
+
+---
+
+# Development Roadmap
+
+## Phase 3A: CLI Composability (Foundation)
+1. --json flag
+2. --summary flag
+These are the simplest features and establish the non-TUI output pattern.
+
+## Phase 3B: Health Score (Core Intelligence)
+3. Health score computation module
+4. Health score display in TUI (status bar, mini-map, zoom)
+5. Health score integration into --summary and --json
+6. Star milestone prediction
+
+## Phase 3C: Multi-Repo & Export
+7. Multi-repo watchlist dashboard
+8. Markdown report export
+
+## Phase 3D: Comparison & New Metrics
+9. Compare mode
+10. GitHub Actions / CI Status panel
+11. Community health audit
+
+# Logical Dependency Chain
+
+1. **--json flag** → foundation, no dependencies
+2. **--summary flag** → depends on format utilities, no other deps
+3. **Health score module** → depends on existing RepoSnapshot (already complete)
+4. **Health score TUI display** → depends on health score module
+5. **Health score in --summary/--json** → depends on health score module + features 1,2
+6. **Star milestone prediction** → depends on existing StarHistory data
+7. **Watchlist dashboard** → depends on health score (for the health column), existing fetch/cache
+8. **Markdown report** → depends on health score, existing snapshot
+9. **Compare mode** → depends on health score, existing fetch
+10. **CI Status panel** → independent new API integration + new panel
+11. **Community health audit** → independent new API integration, integrates with health score
+
+Key principle: Features 1-3 are foundational. Features 4-6 build on them. Features 7-11 can be parallelized.
+
+# Risks and Mitigations
+
+- **GitHub API rate limits with multi-repo:** Mitigate by using cache aggressively, fetching repos in sequence (not all parallel) if rate limit is low, showing cached data while refreshing
+- **CI Status API might be disabled:** Make CIStatus optional (Option<CIStatus>) so repos without Actions still work
+- **Community profile API might not be available for all repos:** Same approach — make it optional
+- **Health score subjectivity:** Use transparent, documented scoring formula. Show sub-scores so users understand the breakdown
+- **Layout changes for 8 panels:** The current 7-panel grid works well. Adding an 8th panel requires careful layout adjustment — consider merging Security + Community Health into one panel, or making CI/Community toggleable
+- **Backwards compatibility with cached snapshots:** New fields on RepoSnapshot must use `#[serde(default)]` so old cache files still deserialize
+
+# Appendix
+
+## Existing modules that will be modified
+- `main.rs` — new CLI flags
+- `src/core/models.rs` — new data models (CIStatus, CommunityHealth, HealthScore)
+- `src/core/github_client.rs` — new API methods
+- `src/core/snapshot.rs` — include new metrics in fetch
+- `src/tui/app/mod.rs` — health score display, new Panel variant
+- `src/tui/app/panels.rs` — 8th panel renderer
+- `src/tui/app/zoom.rs` — milestone prediction display, CI zoom
+- `src/tui/app/mini_map.rs` — health score in mini-map
+
+## New modules to create
+- `src/core/health.rs` — health score computation
+- `src/core/metrics/ci.rs` — CI status fetching
+- `src/core/metrics/community.rs` — community health checks
+- `src/cli/summary.rs` — summary text formatter (or inline in main.rs)
+- `src/cli/report.rs` — markdown report generator
+- `src/tui/app/watchlist.rs` — multi-repo watchlist TUI
+- `src/tui/app/compare.rs` — compare mode TUI
+</PRD>

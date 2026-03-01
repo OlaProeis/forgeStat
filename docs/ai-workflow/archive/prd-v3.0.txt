@@ -1,0 +1,174 @@
+PRD: forgeStat — OSS Contributor Dashboard
+Version: 1.0 | Target Completion: March 2, 2026 | Submission: DEV Weekend Challenge
+
+Overview
+forgeStat is a Rust-based open source project health dashboard that gives maintainers and contributors a fast, focused view of any public GitHub repository — or private repos when authenticated. It ships with a native TUI (ratatui) with an intuitive terminal interface.
+
+Problem Statement
+Open source maintainers have no single, offline-capable, terminal-friendly tool to monitor their project's health. Existing dashboards are web-only, require accounts, or bury the metrics that matter in noise. forgeStat fixes that — it runs from your terminal, caches data locally, and works even when GitHub is slow or rate-limited.
+
+Goals & Non-Goals
+Goals:
+
+Any public GitHub repo works with zero configuration
+
+Private repos work with a GitHub Personal Access Token (PAT)
+
+Native TUI (ratatui) with an intuitive terminal interface
+
+Local cache with online/offline indicator and sync status
+
+All core metrics covered in v1
+
+Non-Goals (post-v1 stretch):
+
+Side-by-side multi-repo comparison
+
+Markdown export of reports
+
+Configurable dashboard widgets
+
+Threshold-based alerts/notifications
+
+Authentication
+GitHub auth is straightforward — no OAuth server needed for this use case.
+
+Mode	How	Rate Limit	Private Repos
+Unauthenticated	No setup	60 req/hour	❌
+Authenticated (PAT)	GITHUB_TOKEN env var or ~/.config/forgeStat/config.toml	5,000 req/hour	✅
+The app reads the token from the environment variable GITHUB_TOKEN on startup, or prompts the user to paste one if missing. Token is stored in a local config file (~/.config/forgeStat/config.toml). Fine-grained PATs with repo:read and metadata:read scopes are sufficient.
+
+UI Architecture
+
+The application uses ratatui for a native terminal user interface with a focus on keyboard-driven navigation and efficient display of repository metrics.
+
+```
+forgeStat/
+├── core/          # GitHub API client, cache, data models
+├── tui/           # ratatui widgets and screens
+└── main.rs        # CLI arg parsing and TUI launch
+```
+
+Launch:
+
+```
+repowatch owner/repo → launches TUI
+```
+
+Core Features (v1)
+1. Star History
+Total star count with sparkline trend over last 30/90/365 days
+
+Uses the GitHub Stargazers API with Accept: application/vnd.github.star+json to get timestamps
+​
+
+2. Open Issues Breakdown
+Total open issues
+
+Grouped by label (bug, enhancement, good first issue, etc.)
+
+Sorted by age — oldest issues highlighted
+
+Shows issues with no labels ("unlabelled")
+
+3. PR Stats
+Open PRs count
+
+Merged PRs (last 30 days)
+
+Average time to merge (created → merged)
+
+Draft vs ready PRs
+
+4. Contributor Activity
+Top 10 contributors by commit count
+
+New contributors in the last 30 days (first-time committers)
+
+Total unique contributors
+
+5. Release Cadence
+Last 5 releases with dates and tag names
+
+Days since last release
+
+Average time between releases
+
+6. Issue & PR Velocity
+Issues opened vs closed per week (last 8 weeks) shown as a bar chart in TUI
+
+PRs opened vs merged per week (last 8 weeks)
+
+7. Dependency/Security Alerts
+Count of open Dependabot alerts (requires auth + security_events scope)
+
+Shown as a warning badge if > 0; hidden if not accessible
+
+Local Cache & Sync
+Cache is stored in ~/.local/share/repowatch/<owner>/<repo>/cache.json.
+​
+
+Behaviour	Detail
+Cache age shown	"Last synced 4 minutes ago" displayed in status bar
+Offline mode	If GitHub unreachable, loads from cache and shows 🔴 OFFLINE badge
+Online mode	Shows 🟢 LIVE or 🟡 STALE (if cache > 15 min old)
+Manual refresh	Press r in TUI to force re-fetch
+Auto-refresh	Optional: re-fetches every 10 minutes if app stays open
+Cache TTL	Default 15 minutes; configurable in config.toml
+Navigation (TUI)
+Key	Action
+Tab / Shift+Tab	Cycle through metric panels
+r	Refresh / re-sync from GitHub
+q	Quit
+?	Help overlay
+↑↓	Scroll within focused panel
+Data Model (simplified)
+rust
+pub struct RepoSnapshot {
+    pub fetched_at: DateTime<Utc>,
+    pub repo: RepoMeta,
+    pub stars: StarHistory,
+    pub issues: IssueStats,
+    pub pull_requests: PrStats,
+    pub contributors: ContributorStats,
+    pub releases: Vec<Release>,
+    pub velocity: VelocityStats,
+    pub security_alerts: Option<SecurityAlerts>, // None if no auth/scope
+}
+Rust Crate Stack
+
+Purpose	Crate
+TUI rendering	ratatui
+GitHub API calls	octocrab or reqwest + serde_json
+Async runtime	tokio
+Local cache (JSON)	serde + serde_json
+Config file (TOML)	toml + serde
+Date/time handling	chrono
+CLI argument parsing	clap
+Milestones (Weekend Schedule)
+When	Milestone
+Friday evening	Scaffold project, GitHub API client, auth + cache layer, data models
+Saturday morning	Core TUI layout: all 7 metric panels, navigation, offline badge
+Saturday afternoon	Polish TUI, optimize performance, keyboard shortcuts
+Saturday evening	Polish, error handling, README, screenshots
+Sunday	Buffer / stretch goals / write dev.to post
+Monday ~8am CET	Submit
+Dev.to Post Angle
+The write-up should frame this as "I built a terminal GitHub dashboard in Rust in a weekend", highlighting:
+
+The elegant TUI design with ratatui
+
+The offline-first caching design
+
+Rate limit handling with PAT auth
+
+Dogfooding it on real repositories with screenshots
+
+Stretch Goals (post-submission)
+Side-by-side multi-repo comparison view
+
+Export full report as Markdown
+
+Configurable widget layout saved in config.toml
+
+Desktop notifications when new issues/PRs arrive above a threshold

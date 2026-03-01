@@ -1,0 +1,88 @@
+# CI workflow for testing and building forgeStat
+# Runs on pull requests and pushes to main branch
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Run tests and checks
+  test:
+    name: Test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Check binary runs
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            ./target/release/forgeStat.exe --version
+            ./target/release/forgeStat.exe --help
+          else
+            ./target/release/forgeStat --version
+            ./target/release/forgeStat --help
+          fi
+
+  # Check cargo-dist can generate installers
+  plan:
+    name: Plan Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-dist
+        uses: taiki-e/install-action@cargo-dist
+
+      - name: Run cargo-dist plan
+        run: cargo dist plan
+
+  # Check package metadata
+  metadata:
+    name: Check Package Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check cargo metadata
+        run: cargo metadata --format-version 1 | jq '.' > /dev/null && echo "Valid JSON"
+
+      - name: Check package can be packaged
+        run: cargo package --allow-dirty --no-verify

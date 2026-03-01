@@ -1,0 +1,121 @@
+{
+  "phase2": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Extend RepoSnapshot and Implement Cache History Structure",
+        "description": "Update data model with previous_snapshot_at, snapshot_history_id and implement rolling history cache with 20 snapshots, purge older than 30 days.",
+        "status": "done"
+      },
+      {
+        "id": 2,
+        "title": "Implement ThemeConfig Parsing and Rendering",
+        "description": "Create ThemeConfig struct and theme.toml parser with built-in themes (default, monochrome, high-contrast, solarized-dark, dracula, gruvbox).",
+        "status": "done"
+      },
+      {
+        "id": 3,
+        "title": "Add StatusBarConfig and Customizable Status Bar",
+        "description": "Implement StatusBarConfig with max 3 items from enum (SyncState, RateLimit, etc.) and render dynamically.",
+        "status": "done"
+      },
+      {
+        "id": 4,
+        "title": "Implement Braille Charts for Stars Panel",
+        "description": "Replace bar sparklines with Unicode Braille patterns (⣿⣷⣦⣄) using ratatui Canvas for 2x resolution.",
+        "status": "done"
+      },
+      {
+        "id": 5,
+        "title": "Build LayoutConfig and PanelLayout System",
+        "description": "Implement resizable panel layouts with persistence to layout.toml including presets (default, compact, wide).",
+        "status": "done"
+      },
+      {
+        "id": 6,
+        "title": "Add Mini-Map Overview Mode (m key)",
+        "description": "Toggle condensed 2-3 line view showing 12+ metrics across all panels.",
+        "status": "done"
+      },
+      {
+        "id": 7,
+        "title": "Implement Panel Detach/Zoom Mode (Enter key)",
+        "description": "Expand selected panel to 80% screen real estate with panel-specific detail views.",
+        "status": "done"
+      },
+      {
+        "id": 8,
+        "title": "Add Contextual Action Hints to Status Bar",
+        "description": "Dynamic status bar showing panel-specific shortcuts.",
+        "status": "done"
+      },
+      {
+        "id": 9,
+        "title": "Implement Search/Filter Within Panels (/ key)",
+        "description": "Interactive search prompt with panel-specific filtering (title, labels, username).",
+        "status": "done"
+      },
+      {
+        "id": 10,
+        "title": "Add Panel-Specific Timeframe Controls (+/- keys)",
+        "description": "Contextual +/- controls for each panel (timeframes, pagination, list sizes).",
+        "status": "done"
+      },
+      {
+        "id": 11,
+        "title": "Implement Mouse-Resizable Panels",
+        "description": "Drag panel borders to resize with persistence.",
+        "status": "done"
+      },
+      {
+        "id": 12,
+        "title": "Build Fuzzy Finder Integration (f key + external)",
+        "description": "Internal fuzzy search overlay + external repowatch --list | fzf support.",
+        "status": "done"
+      },
+      {
+        "id": 13,
+        "title": "Create Command Palette (: key)",
+        "description": "Vim-style command palette with autocomplete and history.",
+        "status": "done"
+      },
+      {
+        "id": 14,
+        "title": "Implement Split-Screen Diff Mode (d key)",
+        "description": "Compare current vs previous snapshot with change highlighting.",
+        "status": "done"
+      },
+      {
+        "id": 15,
+        "title": "Add Copy-to-Clipboard Integration (c key)",
+        "description": "Contextual clipboard copy with toast notification.",
+        "status": "done"
+      },
+      {
+        "id": 16,
+        "title": "Implement All Animations and Visual Polish",
+        "description": "Add panel highlight flash, count-up numbers, sync pulse, braille spinner, sparkline draw.",
+        "status": "pending"
+      },
+      {
+        "id": 17,
+        "title": "Update Help Overlay (?) with All New Shortcuts",
+        "description": "Comprehensive help screen documenting all Phase 2 shortcuts.",
+        "status": "done"
+      },
+      {
+        "id": 18,
+        "title": "Refactor src/tui/app.rs into Logical Modules",
+        "description": "Split the 4733-line file into focused, single-responsibility modules.",
+        "status": "done"
+      }
+    ],
+    "metadata": {
+      "totalTasks": 18,
+      "completed": 17,
+      "pending": 1,
+      "period": "February 27-28, 2026",
+      "note": "Original PRD not archived - reconstructed from taskmaster tasks"
+    }
+  }
+}

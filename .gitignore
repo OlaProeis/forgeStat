@@ -1,0 +1,157 @@
+# =============================================================================
+# Rust / Cargo
+# =============================================================================
+# Build artifacts and targets
+/target
+**/target/
+/Cargo.lock
+
+# Cargo package manager
+*.crate
+
+# =============================================================================
+# Environment & Secrets - NEVER COMMIT THESE
+# =============================================================================
+# Environment files with API keys, tokens, and secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.staging
+.envrc
+
+# Secret files
+*.secret
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.toml
+secrets.json
+credentials*
+!credentials*.example
+
+# =============================================================================
+# IDE & Editors
+# =============================================================================
+# JetBrains (IntelliJ, CLion, etc.)
+.idea/
+*.iml
+*.iws
+out/
+
+# VS Code
+.vscode/
+*.code-workspace
+.history/
+
+# Cursor IDE
+.cursor/
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+#*#
+.#*
+
+# Sublime Text
+*.sublime-*
+
+# Windows
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# =============================================================================
+# OS Generated Files
+# =============================================================================
+# macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# =============================================================================
+# Logs & Temp Files
+# =============================================================================
+*.log
+logs/
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.tmp.*
+*.temp
+*.bak
+*.backup
+*.orig
+*.orig.*
+
+# =============================================================================
+# Test & Debug Output
+# =============================================================================
+# Test result files
+test_output.txt
+debug_output.txt
+*.profraw
+
+# Coverage reports
+coverage/
+*.profdata
+
+# Benchmark results
+bench-results/
+
+# =============================================================================
+# Project Specific
+# =============================================================================
+# Local cache and state (should not be committed)
+.cache/
+local/
+
+# User-specific config overrides (keep example files)
+*.config.local.toml
+
+# =============================================================================
+# Development Tools & Workflows
+# =============================================================================
+# Taskmaster development workflow data
+.taskmaster/
+
+# Agent transcripts
+agent-transcripts/
+
+# Local project notes/PRDs that shouldn't be in the repo
+prd.local.txt
+
+# Promotional materials and PR documents (personal copies)
+docs/promo/

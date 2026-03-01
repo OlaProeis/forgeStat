@@ -1,0 +1,319 @@
+# GitHub Actions workflow for releasing forgeStat
+# Uses cargo-dist for building cross-platform binaries
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Plan the release with cargo-dist
+  plan:
+    name: Plan Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      version: ${{ steps.plan.outputs.version }}
+      has-releases: ${{ steps.plan.outputs.has-releases }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install cargo-dist
+        uses: taiki-e/install-action@cargo-dist
+
+      - name: Plan release
+        id: plan
+        shell: bash
+        run: |
+          cargo dist host --steps=upload --steps=release --output-format=json "${{ github.ref }}" > dist-manifest.json
+          echo "dist-manifest.json:"
+          cat dist-manifest.json
+          
+          # Read the manifest
+          DIST_TAG=$(jq -r '.announcement_tag' dist-manifest.json)
+          DIST_VERSION=$(jq -r '.announcement_title' dist-manifest.json)
+          HAS_RELEASES=$(jq '.releases | length' dist-manifest.json)
+          
+          echo "tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$DIST_VERSION" >> "$GITHUB_OUTPUT"
+          echo "has-releases=$HAS_RELEASES" >> "$GITHUB_OUTPUT"
+
+      - name: Upload plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-plan
+          path: dist-manifest.json
+
+  # Build binaries for all targets
+  build:
+    name: Build Binaries
+    needs: plan
+    if: ${{ needs.plan.outputs.has-releases != '0' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cargo-dist
+        uses: taiki-e/install-action@cargo-dist
+
+      - name: Build release binary
+        shell: bash
+        run: |
+          cargo dist build --artifacts=local --target=${{ matrix.target }} --output-format=json > dist-manifest.json
+          cat dist-manifest.json
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: |
+            target/dist/
+            dist-manifest.json
+
+  # Create GitHub Release and upload artifacts
+  release:
+    name: Create Release
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    if: ${{ needs.plan.outputs.has-releases != '0' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          pattern: dist-*
+
+      - name: Install cargo-dist
+        uses: taiki-e/install-action@cargo-dist
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          mkdir -p checksums
+          cd artifacts
+          for dir in dist-*/; do
+            if [ -d "$dir/target/dist" ]; then
+              for file in "$dir/target/dist"/*; do
+                if [ -f "$file" ]; then
+                  sha256sum "$file" >> ../checksums/SHA256SUMS
+                fi
+              done
+            fi
+          done
+          cat checksums/SHA256SUMS
+
+      - name: Create release
+        shell: bash
+        run: |
+          tag="${{ needs.plan.outputs.tag }}"
+          version="${{ needs.plan.outputs.version }}"
+          
+          # Create or update release
+          if gh release view "$tag" &>/dev/null; then
+            echo "Release $tag already exists, uploading artifacts..."
+          else
+            echo "Creating release $tag..."
+            gh release create "$tag" \
+              --title "$version" \
+              --generate-notes \
+              --draft=false \
+              --prerelease=false
+          fi
+          
+          # Upload all artifacts
+          for dir in artifacts/dist-*/; do
+            if [ -d "$dir/target/dist" ]; then
+              for file in "$dir/target/dist"/*; do
+                if [ -f "$file" ]; then
+                  echo "Uploading $file..."
+                  gh release upload "$tag" "$file" --clobber
+                fi
+              done
+            fi
+          done
+          
+          # Upload checksums
+          if [ -f checksums/SHA256SUMS ]; then
+            gh release upload "$tag" checksums/SHA256SUMS --clobber
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Publish to crates.io
+  publish-crates:
+    name: Publish to crates.io
+    needs: [plan, build, release]
+    runs-on: ubuntu-latest
+    if: ${{ needs.plan.outputs.has-releases != '0' && !contains(needs.plan.outputs.tag, '-') }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        shell: bash
+        run: |
+          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Update Homebrew formula (macOS/Linux)
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: [plan, release]
+    runs-on: ubuntu-latest
+    if: ${{ needs.plan.outputs.has-releases != '0' && !contains(needs.plan.outputs.tag, '-') }}
+    steps:
+      - name: Checkout homebrew-tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: olaproeis/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        shell: bash
+        run: |
+          tag="${{ needs.plan.outputs.tag }}"
+          version="${tag#v}"
+          
+          cd homebrew-tap
+          
+          # Download macOS Intel binary and get SHA256
+          mac_intel_url="https://github.com/${{ github.repository }}/releases/download/${tag}/forgeStat-${tag}-x86_64-apple-darwin.tar.gz"
+          curl -L -o mac_intel.tar.gz "$mac_intel_url"
+          mac_intel_sha=$(sha256sum mac_intel.tar.gz | cut -d' ' -f1)
+          
+          # Download macOS ARM binary and get SHA256
+          mac_arm_url="https://github.com/${{ github.repository }}/releases/download/${tag}/forgeStat-${tag}-aarch64-apple-darwin.tar.gz"
+          curl -L -o mac_arm.tar.gz "$mac_arm_url"
+          mac_arm_sha=$(sha256sum mac_arm.tar.gz | cut -d' ' -f1)
+          
+          # Download Linux binary and get SHA256
+          linux_url="https://github.com/${{ github.repository }}/releases/download/${tag}/forgeStat-${tag}-x86_64-unknown-linux-gnu.tar.gz"
+          curl -L -o linux.tar.gz "$linux_url"
+          linux_sha=$(sha256sum linux.tar.gz | cut -d' ' -f1)
+          
+          # Update formula
+          cat > Formula/forgeStat.rb << EOF
+          class ForgeStat < Formula
+            desc "A real-time GitHub repository dashboard for your terminal"
+            homepage "https://github.com/${{ github.repository }}"
+            version "${version}"
+            license "MIT"
+
+            if Hardware::CPU.arm?
+              url "${mac_arm_url}"
+              sha256 "${mac_arm_sha}"
+            else
+              url "${mac_intel_url}"
+              sha256 "${mac_intel_sha}"
+            end
+
+            def install
+              bin.install "forgeStat"
+            end
+
+            test do
+              system "#{bin}/forgeStat", "--version"
+            end
+          end
+          EOF
+          
+          # Commit and push
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Formula/forgeStat.rb
+          git commit -m "Update forgeStat to ${version}"
+          git push
+
+  # Announce release
+  announce:
+    name: Announce Release
+    needs: [plan, release]
+    runs-on: ubuntu-latest
+    if: ${{ needs.plan.outputs.has-releases != '0' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create release summary
+        shell: bash
+        run: |
+          tag="${{ needs.plan.outputs.tag }}"
+          version="${{ needs.plan.outputs.version }}"
+          
+          echo "# forgeStat $version Released! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Installation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### macOS/Linux (Homebrew)" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "brew tap olaproeis/tap" >> $GITHUB_STEP_SUMMARY
+          echo "brew install forgeStat" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Windows (PowerShell)" >> $GITHUB_STEP_SUMMARY
+          echo '```powershell' >> $GITHUB_STEP_SUMMARY
+          echo "iwr https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.ps1 -UseBasicParsing | iex" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Linux/macOS (Shell)" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install.sh | bash" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Cargo" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "cargo install forgeStat" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Release Assets" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Release](https://github.com/${{ github.repository }}/releases/tag/${tag})" >> $GITHUB_STEP_SUMMARY
