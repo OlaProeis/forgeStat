@@ -10,6 +10,7 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -304,7 +305,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     needs: [build-windows, build-macos, build-linux, build-installers]
-    if: always() && needs.build-windows.result == 'success'
+    if: needs.build-windows.result == 'success'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
