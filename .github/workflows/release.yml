@@ -135,7 +135,7 @@ jobs:
           cp scripts/install.sh dist/install.sh
           cp scripts/install.ps1 dist/install.ps1
           chmod +x dist/install.sh
-          cd dist && sha256sum *.tar.gz *.zip *.msi 2>/dev/null > SHA256SUMS.txt || true
+          (cd dist && sha256sum *.tar.gz *.zip *.msi 2>/dev/null > SHA256SUMS.txt) || true
           echo "=== Release assets ==="
           ls -lh dist/
 
