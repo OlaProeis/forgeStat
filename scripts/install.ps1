@@ -8,6 +8,12 @@ function Write-Info($m)  { Write-Host "[INFO] $m" -ForegroundColor Cyan }
 function Write-Ok($m)    { Write-Host "[OK]   $m" -ForegroundColor Green }
 function Write-Err($m)   { Write-Host "[ERR]  $m" -ForegroundColor Red; exit 1 }
 
+function Refresh-Path {
+  $machine = [Environment]::GetEnvironmentVariable("PATH", "Machine")
+  $user    = [Environment]::GetEnvironmentVariable("PATH", "User")
+  $env:PATH = "$machine;$user"
+}
+
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
   "AMD64" { "x86_64-pc-windows-msvc" }
   "ARM64" { "aarch64-pc-windows-msvc" }
@@ -35,8 +41,9 @@ try {
   Write-Info "Running MSI installer (silent)..."
   $p = Start-Process msiexec.exe -ArgumentList "/i","`"$msiPath`"","/quiet","/norestart" -Wait -PassThru
   if ($p.ExitCode -eq 0) {
-    Write-Ok "Installed via MSI. Restart your terminal, then run: forgeStat --version"
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    Refresh-Path
+    Write-Ok "Installed via MSI. Run: forgeStat --version"
     exit 0
   }
   Write-Info "MSI returned exit code $($p.ExitCode), falling back to ZIP..."
@@ -60,7 +67,8 @@ try {
     [Environment]::SetEnvironmentVariable("PATH", "$userPath;$InstallDir", "User")
     Write-Info "Added $InstallDir to PATH."
   }
-  Write-Ok "Installed. Restart your terminal, then run: forgeStat --version"
+  Refresh-Path
+  Write-Ok "Installed. Run: forgeStat --version"
 } catch {
   Write-Err "Installation failed: $_"
 } finally {
