@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="forgeStat"
+           Language="1033"
+           Version="$(var.Version)"
+           Manufacturer="OlaProeis"
+           UpgradeCode="3F5B3C7B-4E8E-4E6E-9F3D-7C8A9B2D4E5F">
+
+    <Package InstallerVersion="200"
+             Compressed="yes"
+             InstallScope="perUser"
+             Platform="x64" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate />
+
+    <!-- Icon -->
+    <Icon Id="forgeStatIcon.exe" SourceFile="$(var.CargoTargetBinDir)\forgeStat.exe" />
+    <Property Id="ARPPRODUCTICON" Value="forgeStatIcon.exe" />
+
+    <!-- Features -->
+    <Feature Id="ProductFeature" Level="1">
+      <ComponentGroupRef Id="Binaries" />
+      <ComponentGroupRef Id="PathEnv" />
+    </Feature>
+
+    <!-- Directory structure -->
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="LocalAppDataFolder">
+        <Directory Id="APPLICATIONFOLDER" Name="forgeStat">
+          <Component Id="ApplicationComponent" Guid="A7B9C3D4-E5F6-7890-1234-567890ABCDEF">
+            <File Id="forgeStatEXE" Name="forgeStat.exe" Source="$(var.CargoTargetBinDir)\forgeStat.exe" KeyPath="yes">
+              <Shortcut Id="StartMenuShortcut"
+                        Directory="ProgramMenuFolder"
+                        Name="forgeStat"
+                        WorkingDirectory="APPLICATIONFOLDER"
+                        Icon="forgeStatIcon.exe"
+                        Advertise="yes" />
+            </File>
+          </Component>
+        </Directory>
+      </Directory>
+
+      <!-- Start Menu -->
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="forgeStat" />
+      </Directory>
+    </Directory>
+
+    <!-- Component Groups -->
+    <ComponentGroup Id="Binaries" Directory="APPLICATIONFOLDER">
+      <ComponentRef Id="ApplicationComponent" />
+    </ComponentGroup>
+
+    <!-- Add to PATH -->
+    <ComponentGroup Id="PathEnv" Directory="TARGETDIR">
+      <Component Id="PathEnvironmentVariable" Guid="B8C0D4E5-F7G8-8901-2345-678901BCDEF0" KeyPath="yes">
+        <Environment Id="PATH"
+                     Name="PATH"
+                     Value="[APPLICATIONFOLDER]"
+                     Permanent="no"
+                     Part="last"
+                     Action="set"
+                     System="no" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Custom Actions -->
+    <InstallExecuteSequence>
+      <Custom Action="UpdateEnvironment" After="InstallFiles" />
+    </InstallExecuteSequence>
+
+    <CustomAction Id="UpdateEnvironment"
+                  BinaryKey="WixCA"
+                  DllEntry="WixSendMessageFromCustomAction"
+                  Execute="immediate"
+                  Return="ignore" />
+
+  </Product>
+</Wix>
