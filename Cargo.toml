@@ -15,22 +15,9 @@ rust-version = "1.74"
 name = "forgeStat"
 path = "src/main.rs"
 
-[workspace.metadata.dist]
-installers = ["shell", "powershell", "msi"]
-targets = [
-    "x86_64-pc-windows-msvc",
-    "x86_64-unknown-linux-gnu",
-    "x86_64-unknown-linux-musl",
-    "aarch64-unknown-linux-gnu",
-    "aarch64-apple-darwin",
-    "x86_64-apple-darwin",
-]
-pr-run-mode = "plan"
-allow-dirty = ["ci"]
-
 [package.metadata.wix]
 upgrade-guid = "3F5B3C7B-4E8E-4E6E-9F3D-7C8A9B2D4E5F"
-path-guid = "3F5B3C7B-4E8E-4E6E-9F3D-7C8A9B2D4E5F"
+path-guid = "B8C0D4E5-F6A8-8901-2345-678901BCDEF0"
 license = false
 eula = false
 
