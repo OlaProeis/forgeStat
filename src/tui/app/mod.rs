@@ -25,14 +25,16 @@ use chrono::Utc;
 use ratatui::{prelude::*, widgets::*};
 
 use crate::core::cache::CachedRepoInfo;
-use crate::core::config::{AnimationConfig, LayoutConfig, StatusBarConfig, StatusBarItem};
+use crate::core::config::{AnimationConfig, AutoRefreshConfig, LayoutConfig, StatusBarConfig, StatusBarItem};
 use crate::core::health::{compute_health_score, HealthScore};
 use crate::core::models::{Contributor, Issue, RateLimitInfo, Release, RepoSnapshot, SnapshotDiff};
 use crate::core::theme::ThemeConfig;
 use crate::tui::app::compare::CompareFocus;
 use crate::tui::widgets::{AnimatedCounter, BrailleSpinner};
 
-const AUTO_REFRESH_SECS: u64 = 600;
+/// Default auto-refresh interval in seconds (60 minutes = 1 hour)
+/// Can be customized via ~/.config/forgeStat/refresh.toml
+pub const DEFAULT_AUTO_REFRESH_SECS: u64 = 3600;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Panel {
@@ -321,10 +323,14 @@ impl IssuesSort {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AppAction {
     Quit,
     Refresh,
+    /// Background auto-refresh initiated (non-intrusive, keeps UI intact)
+    BackgroundRefresh,
+    /// Background fetch completed successfully
+    BackgroundFetchComplete(RepoSnapshot),
     /// Switch to a different repository (owner, repo)
     SwitchRepo(String, String),
 }
@@ -429,6 +435,12 @@ pub struct App {
     // Double-click tracking for zoom
     last_click_time: Option<Instant>,
     last_click_pos: Option<(u16, u16)>,
+    // Background auto-refresh state
+    pub background_refresh_in_progress: bool,
+    pub background_refresh_last_error: Option<String>,
+    pub background_refresh_last_success: Option<Instant>,
+    // Auto-refresh configuration (loaded from refresh.toml)
+    pub auto_refresh_config: AutoRefreshConfig,
 }
 
 impl App {
@@ -510,7 +522,39 @@ impl App {
             token_input_masked: true,
             last_click_time: None,
             last_click_pos: None,
+            background_refresh_in_progress: false,
+            background_refresh_last_error: None,
+            background_refresh_last_success: None,
+            auto_refresh_config: AutoRefreshConfig::load(),
         }
+    }
+
+    /// Get the auto-refresh interval in seconds
+    /// Returns the configured value or default (3600 = 1 hour)
+    pub fn auto_refresh_secs(&self) -> u64 {
+        self.auto_refresh_config
+            .auto_refresh_secs()
+            .unwrap_or(DEFAULT_AUTO_REFRESH_SECS)
+    }
+
+    /// Start a background refresh - called when auto-refresh triggers
+    pub fn start_background_refresh(&mut self) {
+        self.background_refresh_in_progress = true;
+        self.background_refresh_last_error = None;
+        self.last_refresh = Instant::now(); // Reset the timer
+    }
+
+    /// Complete a background refresh successfully
+    pub fn complete_background_refresh(&mut self) {
+        self.background_refresh_in_progress = false;
+        self.background_refresh_last_success = Some(Instant::now());
+        self.background_refresh_last_error = None;
+    }
+
+    /// Mark background refresh as failed
+    pub fn fail_background_refresh(&mut self, error: String) {
+        self.background_refresh_in_progress = false;
+        self.background_refresh_last_error = Some(error);
     }
 
     /// Toggle diff mode on/off
@@ -1535,6 +1579,45 @@ impl App {
             }
         }
 
+        // Add background refresh indicator if in progress or recent error
+        if self.background_refresh_in_progress {
+            if !first_item {
+                spans.push(Span::styled(
+                    " | ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ));
+            }
+            let spinner = if self.animation_config.is_spinner_enabled() {
+                self.get_spinner_char()
+            } else {
+                '⟳'
+            };
+            spans.push(Span::styled(
+                format!("{} Syncing...", spinner),
+                Style::default()
+                    .fg(self.theme.status_live_color())
+                    .bold(),
+            ));
+        } else if let Some(ref error) = self.background_refresh_last_error {
+            if !first_item {
+                spans.push(Span::styled(
+                    " | ",
+                    Style::default().fg(self.theme.text_secondary_color()),
+                ));
+            }
+            // Truncate error message if too long
+            let error_msg = if error.len() > 30 {
+                format!("{}...", &error[..27])
+            } else {
+                error.clone()
+            };
+            spans.push(Span::styled(
+                format!("⚠ {}", error_msg),
+                Style::default()
+                    .fg(self.theme.indicator_warning_color()),
+            ));
+        }
+
         // Add separator and contextual action hints
         if !spans.is_empty() {
             spans.push(Span::raw("  "));
@@ -2023,4 +2106,4 @@ impl App {
     }
 }
 
-pub use event_loop::run_event_loop;
+pub use event_loop::{run_event_loop, BackgroundFetchResult};

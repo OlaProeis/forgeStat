@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use tokio::sync::mpsc::Sender;
+use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 
 use crate::core::cache::Cache;
@@ -9,6 +10,7 @@ use crate::core::models::RepoSnapshot;
 use crate::tui::app::FetchProgress;
 
 const DEFAULT_CACHE_TTL_MINS: u64 = 15;
+const API_TIMEOUT_SECS: u64 = 30;
 
 /// Endpoints to fetch with their display names
 const ENDPOINTS: &[(&str, &str)] = &[
@@ -48,6 +50,7 @@ pub async fn fetch_snapshot(
     // Check for existing snapshot to set previous_snapshot_at
     let previous_snapshot_at = cache.load().await?.map(|(snapshot, _)| snapshot.fetched_at);
 
+    // Fetch all metrics with individual timeouts to prevent hanging
     let (
         repo_meta,
         stars,
@@ -60,16 +63,76 @@ pub async fn fetch_snapshot(
         ci_status,
         community,
     ) = tokio::try_join!(
-        client.repos(owner, repo),
-        client.stargazers(owner, repo),
-        client.issues(owner, repo),
-        client.pull_requests(owner, repo),
-        client.contributors(owner, repo),
-        client.releases(owner, repo),
-        client.velocity(owner, repo),
-        client.security_alerts(owner, repo),
-        client.ci_status(owner, repo),
-        client.community_health(owner, repo),
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.repos(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Repo metadata fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.stargazers(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Star History fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.issues(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Issues fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.pull_requests(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Pull Requests fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.contributors(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Contributors fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.releases(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Releases fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.velocity(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Velocity fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.security_alerts(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Security Alerts fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.ci_status(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("CI Status fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
+        async {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.community_health(owner, repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Community Health fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        },
     )
     .with_context(|| format!("Failed to fetch metrics for {}/{}", owner, repo))?;
 
@@ -209,16 +272,20 @@ pub async fn fetch_snapshot_with_progress(
         let repo = repo.to_string();
         let page_progress_tx = page_progress_tx.clone();
         async move {
-            let result = client
+            let result = timeout(Duration::from_secs(API_TIMEOUT_SECS), client
                 .stargazers_with_progress(
                     &owner,
                     &repo,
                     Some(Box::new(move |current, total| {
                         let _ = page_progress_tx.try_send((current, total));
                     })),
-                )
+                ))
                 .await;
-            result
+            match result {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Star History fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
         }
     });
 
@@ -227,7 +294,13 @@ pub async fn fetch_snapshot_with_progress(
         let client = client.clone();
         let owner = owner.to_string();
         let repo = repo.to_string();
-        async move { client.issues(&owner, &repo).await }
+        async move {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.issues(&owner, &repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Issues fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        }
     });
 
     report_progress(
@@ -242,7 +315,13 @@ pub async fn fetch_snapshot_with_progress(
         let client = client.clone();
         let owner = owner.to_string();
         let repo = repo.to_string();
-        async move { client.pull_requests(&owner, &repo).await }
+        async move {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.pull_requests(&owner, &repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Pull Requests fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        }
     });
 
     report_progress(
@@ -257,7 +336,13 @@ pub async fn fetch_snapshot_with_progress(
         let client = client.clone();
         let owner = owner.to_string();
         let repo = repo.to_string();
-        async move { client.contributors(&owner, &repo).await }
+        async move {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.contributors(&owner, &repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Contributors fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        }
     });
 
     report_progress(
@@ -272,7 +357,13 @@ pub async fn fetch_snapshot_with_progress(
         let client = client.clone();
         let owner = owner.to_string();
         let repo = repo.to_string();
-        async move { client.releases(&owner, &repo).await }
+        async move {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.releases(&owner, &repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Releases fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        }
     });
 
     report_progress(
@@ -287,7 +378,13 @@ pub async fn fetch_snapshot_with_progress(
         let client = client.clone();
         let owner = owner.to_string();
         let repo = repo.to_string();
-        async move { client.velocity(&owner, &repo).await }
+        async move {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.velocity(&owner, &repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Velocity fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        }
     });
 
     report_progress(
@@ -302,7 +399,13 @@ pub async fn fetch_snapshot_with_progress(
         let client = client.clone();
         let owner = owner.to_string();
         let repo = repo.to_string();
-        async move { client.security_alerts(&owner, &repo).await }
+        async move {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.security_alerts(&owner, &repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Security Alerts fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        }
     });
 
     report_progress(
@@ -317,7 +420,13 @@ pub async fn fetch_snapshot_with_progress(
         let client = client.clone();
         let owner = owner.to_string();
         let repo = repo.to_string();
-        async move { client.ci_status(&owner, &repo).await }
+        async move {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.ci_status(&owner, &repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("CI Status fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        }
     });
 
     report_progress(
@@ -332,7 +441,13 @@ pub async fn fetch_snapshot_with_progress(
         let client = client.clone();
         let owner = owner.to_string();
         let repo = repo.to_string();
-        async move { client.community_health(&owner, &repo).await }
+        async move {
+            match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.community_health(&owner, &repo)).await {
+                Ok(Ok(data)) => Ok(data),
+                Ok(Err(e)) => Err(e),
+                Err(_) => Err(anyhow::anyhow!("Community Health fetch timed out after {}s", API_TIMEOUT_SECS)),
+            }
+        }
     });
 
     // Collect results with progress updates as each completes

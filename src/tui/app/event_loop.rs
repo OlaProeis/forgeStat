@@ -5,25 +5,63 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers, MouseEventKind},
     DefaultTerminal,
 };
+use tokio::sync::mpsc::Receiver;
 
-use super::{App, AppAction, BorderType, Panel, AUTO_REFRESH_SECS};
+use super::{App, AppAction, BorderType, Panel};
+use crate::core::models::RepoSnapshot;
+
+/// Result of a background fetch operation
+#[derive(Debug)]
+pub enum BackgroundFetchResult {
+    Success(RepoSnapshot),
+    Failed(String),
+}
 
 /// Runs the TUI event loop until the user quits or requests a refresh.
-/// Auto-refreshes every 10 minutes.
-pub fn run_event_loop(terminal: &mut DefaultTerminal, app: &mut App) -> Result<AppAction> {
+/// Auto-refreshes every 10 minutes using non-intrusive background refresh.
+/// Also checks for background fetch completion via the optional receiver.
+pub fn run_event_loop(
+    terminal: &mut DefaultTerminal,
+    app: &mut App,
+    background_rx: &mut Option<Receiver<BackgroundFetchResult>>,
+) -> Result<AppAction> {
     loop {
         // Update animations and redraw if needed
         let needs_redraw = app.update_animations();
 
+        // Check for background fetch completion (non-blocking)
+        if let Some(ref mut rx) = background_rx {
+            match rx.try_recv() {
+                Ok(BackgroundFetchResult::Success(snapshot)) => {
+                    app.complete_background_refresh();
+                    return Ok(AppAction::BackgroundFetchComplete(snapshot));
+                }
+                Ok(BackgroundFetchResult::Failed(error)) => {
+                    app.fail_background_refresh(error);
+                    // Continue running - don't return, just update state
+                }
+                Err(_) => {
+                    // No message yet, continue
+                }
+            }
+        }
+
         // Always draw on first iteration or when animations require it
         terminal.draw(|frame| app.render(frame))?;
 
-        if app.last_refresh.elapsed() >= Duration::from_secs(AUTO_REFRESH_SECS) {
-            return Ok(AppAction::Refresh);
+        // Check for auto-refresh (configurable interval, default 60 minutes) - use background refresh
+        // to avoid intrusive loading screen. Auto-refresh can be disabled by setting interval to 0.
+        let refresh_secs = app.auto_refresh_secs();
+        if refresh_secs > 0
+            && app.last_refresh.elapsed() >= Duration::from_secs(refresh_secs)
+            && !app.background_refresh_in_progress
+            && background_rx.is_none()
+        {
+            return Ok(AppAction::BackgroundRefresh);
         }
 
-        // Use shorter poll interval when animations are active
-        let poll_duration = if needs_redraw {
+        // Use shorter poll interval when animations are active or background fetch in progress
+        let poll_duration = if needs_redraw || app.background_refresh_in_progress {
             Duration::from_millis(16) // ~60fps for smooth animations
         } else {
             Duration::from_millis(250) // Normal poll rate when idle

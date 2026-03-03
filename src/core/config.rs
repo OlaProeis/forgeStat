@@ -1108,6 +1108,144 @@ pub fn watchlist_file_path() -> Result<PathBuf> {
     Ok(config_dir.join("watchlist.toml"))
 }
 
+// =============================================================================
+// Auto-Refresh Configuration
+// =============================================================================
+
+/// Configuration for auto-refresh interval
+/// Stored in refresh.toml with customizable interval in minutes
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AutoRefreshConfig {
+    /// Auto-refresh interval in minutes (default: 60 minutes = 1 hour)
+    /// Set to 0 to disable auto-refresh completely
+    #[serde(default = "default_auto_refresh_minutes")]
+    pub auto_refresh_minutes: u64,
+}
+
+fn default_auto_refresh_minutes() -> u64 {
+    60 // Default to 1 hour to conserve API rate limits
+}
+
+impl Default for AutoRefreshConfig {
+    fn default() -> Self {
+        Self {
+            auto_refresh_minutes: default_auto_refresh_minutes(),
+        }
+    }
+}
+
+impl AutoRefreshConfig {
+    /// Load auto-refresh config from file or return default (60 minutes)
+    pub fn load() -> Self {
+        match Self::try_load() {
+            Ok(config) => {
+                log::info!(
+                    "Loaded auto-refresh config: interval={} minutes",
+                    config.auto_refresh_minutes
+                );
+                config
+            }
+            Err(e) => {
+                log::info!("Using default auto-refresh config (60 min): {}", e);
+                Self::default()
+            }
+        }
+    }
+
+    /// Try to load auto-refresh config from file
+    fn try_load() -> Result<Self> {
+        let config_path = refresh_file_path()?;
+
+        if !config_path.exists() {
+            return Ok(Self::default());
+        }
+
+        let config_str = fs::read_to_string(&config_path).with_context(|| {
+            format!(
+                "Failed to read auto-refresh config at: {}",
+                config_path.display()
+            )
+        })?;
+
+        let config: AutoRefreshConfig = toml::from_str(&config_str).with_context(|| {
+            format!(
+                "Failed to parse auto-refresh config at: {}",
+                config_path.display()
+            )
+        })?;
+
+        // Validate: cap at 24 hours (1440 minutes) to prevent absurd values
+        // and minimum of 5 minutes to prevent hitting rate limits too quickly
+        let validated = Self {
+            auto_refresh_minutes: config.auto_refresh_minutes.clamp(0, 1440),
+        };
+
+        Ok(validated)
+    }
+
+    /// Save auto-refresh config to file
+    pub fn save(&self) -> Result<()> {
+        let config_path = refresh_file_path()?;
+        let config_dir = config_path
+            .parent()
+            .context("Failed to get auto-refresh config directory")?;
+
+        // Create config directory if it doesn't exist
+        if !config_dir.exists() {
+            fs::create_dir_all(config_dir).with_context(|| {
+                format!(
+                    "Failed to create config directory: {}",
+                    config_dir.display()
+                )
+            })?;
+            log::info!("Created config directory: {}", config_dir.display());
+        }
+
+        // Validate before saving
+        let config_to_save = Self {
+            auto_refresh_minutes: self.auto_refresh_minutes.clamp(0, 1440),
+        };
+
+        let config_str = toml::to_string_pretty(&config_to_save)
+            .context("Failed to serialize auto-refresh config to TOML")?;
+
+        fs::write(&config_path, config_str).with_context(|| {
+            format!(
+                "Failed to write auto-refresh config: {}",
+                config_path.display()
+            )
+        })?;
+
+        log::info!(
+            "Saved auto-refresh config to: {} ({} minutes)",
+            config_path.display(),
+            config_to_save.auto_refresh_minutes
+        );
+        Ok(())
+    }
+
+    /// Get the auto-refresh interval as seconds (for internal use)
+    /// Returns None if auto-refresh is disabled (set to 0)
+    pub fn auto_refresh_secs(&self) -> Option<u64> {
+        if self.auto_refresh_minutes == 0 {
+            None
+        } else {
+            Some(self.auto_refresh_minutes * 60)
+        }
+    }
+
+    /// Check if auto-refresh is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.auto_refresh_minutes > 0
+    }
+}
+
+/// Returns the path to the auto-refresh config file
+pub fn refresh_file_path() -> Result<PathBuf> {
+    let config_dir = config_dir()?;
+    Ok(config_dir.join("refresh.toml"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -15,7 +15,7 @@ use forgeStat::core::metrics::stars::predict_milestone;
 use forgeStat::core::models::RepoSnapshot;
 use forgeStat::core::snapshot;
 use forgeStat::core::theme;
-use forgeStat::tui::app::{App, AppAction, LoadingScreen, SyncState};
+use forgeStat::tui::app::{App, AppAction, BackgroundFetchResult, LoadingScreen, SyncState};
 use serde::Serialize;
 
 /// JSON output structure including snapshot, health score, and milestone prediction
@@ -482,8 +482,11 @@ async fn run_compare_mode(owner1: &str, repo1: &str, owner2: &str, repo2: &str) 
     // Enable mouse capture
     stdout().execute(EnableMouseCapture)?;
 
+    // No background refresh in compare mode (too complex with two repos)
+    let mut background_rx: Option<tokio::sync::mpsc::Receiver<BackgroundFetchResult>> = None;
+
     let action = loop {
-        match forgeStat::tui::app::run_event_loop(&mut terminal, &mut app) {
+        match forgeStat::tui::app::run_event_loop(&mut terminal, &mut app, &mut background_rx) {
             Ok(AppAction::Quit) => break Ok(AppAction::Quit),
             Ok(AppAction::Refresh) => {
                 // Disable mouse capture and clear terminal for loading screen
@@ -577,6 +580,14 @@ async fn run_compare_mode(owner1: &str, repo1: &str, owner2: &str, repo2: &str) 
                         log::warn!("Refresh failed: {}", e);
                     }
                 }
+            }
+            Ok(AppAction::BackgroundRefresh) => {
+                // Skip auto-refresh in compare mode (too complex with two repos)
+                // Just reset the timer to avoid constant triggering
+                app.last_refresh = std::time::Instant::now();
+            }
+            Ok(AppAction::BackgroundFetchComplete(_)) => {
+                // Should not happen in compare mode, but handle gracefully
             }
             Ok(AppAction::SwitchRepo(new_owner, new_repo)) => {
                 break Ok(AppAction::SwitchRepo(new_owner, new_repo))
@@ -741,9 +752,12 @@ async fn run_app_loop(initial_owner: &str, initial_repo: &str) -> Result<()> {
         let mut terminal = ratatui::init();
         stdout().execute(EnableMouseCapture)?;
 
+        // Channel for background fetch results
+        let mut background_rx: Option<tokio::sync::mpsc::Receiver<BackgroundFetchResult>> = None;
+
         // Run main event loop
         let action = loop {
-            match forgeStat::tui::app::run_event_loop(&mut terminal, &mut app) {
+            match forgeStat::tui::app::run_event_loop(&mut terminal, &mut app, &mut background_rx) {
                 Ok(AppAction::Quit) => break Ok(AppAction::Quit),
                 Ok(AppAction::Refresh) => {
                     // Disable mouse capture and clear terminal for loading screen
@@ -806,6 +820,65 @@ async fn run_app_loop(initial_owner: &str, initial_repo: &str) -> Result<()> {
                             app.set_offline();
                         }
                     }
+                }
+                Ok(AppAction::BackgroundRefresh) => {
+                    // Start a background refresh without loading screen
+                    if app.background_refresh_in_progress {
+                        continue; // Already refreshing, skip
+                    }
+
+                    app.start_background_refresh();
+
+                    // Create channel for background fetch result
+                    let (bg_tx, bg_rx) = tokio::sync::mpsc::channel(1);
+                    background_rx = Some(bg_rx);
+
+                    // Spawn fetch task in background (no progress reporting needed)
+                    let client_clone = client.clone();
+                    let owner_clone = current_owner.clone();
+                    let repo_clone = current_repo.clone();
+                    let cache_clone = match Cache::new(&current_owner, &current_repo) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            app.fail_background_refresh(format!("Cache error: {}", e));
+                            background_rx = None;
+                            continue;
+                        }
+                    };
+
+                    tokio::spawn(async move {
+                        match snapshot::fetch_snapshot(
+                            &client_clone,
+                            &cache_clone,
+                            &owner_clone,
+                            &repo_clone,
+                            true, // force refresh
+                        )
+                        .await
+                        {
+                            Ok(snapshot) => {
+                                let _ = bg_tx.send(BackgroundFetchResult::Success(snapshot)).await;
+                            }
+                            Err(e) => {
+                                let _ = bg_tx
+                                    .send(BackgroundFetchResult::Failed(e.to_string()))
+                                    .await;
+                            }
+                        }
+                    });
+                }
+                Ok(AppAction::BackgroundFetchComplete(snapshot)) => {
+                    // Background fetch completed successfully
+                    app.complete_background_refresh();
+                    app.set_snapshot(snapshot, SyncState::Live);
+                    background_rx = None; // Channel consumed
+
+                    // Update rate limit
+                    if let Ok(rl) = client.fetch_rate_limit().await {
+                        app.set_rate_limit(rl);
+                    }
+
+                    log::info!("Background refresh completed successfully");
                 }
                 Ok(AppAction::SwitchRepo(new_owner, new_repo)) => {
                     break Ok(AppAction::SwitchRepo(new_owner, new_repo))
