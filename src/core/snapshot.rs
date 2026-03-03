@@ -219,18 +219,26 @@ pub async fn fetch_snapshot_with_progress(
 
     // First fetch repo metadata and stars count (for large repo detection)
     report_progress(&progress_tx, total_endpoints, 0, Some("Repository"), None).await;
-    let repo_meta_result = client.repos(owner, repo).await;
+    let repo_meta_result = match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.repos(owner, repo)).await {
+        Ok(Ok(data)) => Ok(data),
+        Ok(Err(e)) => Err(e),
+        Err(_) => Err(anyhow::anyhow!("Repo metadata fetch timed out after {}s", API_TIMEOUT_SECS)),
+    };
 
     // Get star count early for large repo detection - fetch from API
-    let star_count = match client.fetch_repo_star_count(owner, repo).await {
-        Ok(count) => {
+    let star_count = match timeout(Duration::from_secs(API_TIMEOUT_SECS), client.fetch_repo_star_count(owner, repo)).await {
+        Ok(Ok(count)) => {
             if count > 5_000 {
                 log::info!("Large repo detected: {} stars (showing Pong game)", count);
             }
             Some(count)
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             log::warn!("Failed to fetch star count: {}", e);
+            None
+        }
+        Err(_) => {
+            log::warn!("Star count fetch timed out after {}s", API_TIMEOUT_SECS);
             None
         }
     };
